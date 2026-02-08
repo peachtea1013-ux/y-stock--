@@ -705,7 +705,7 @@
     const updateStock = (itemId, delta, type, useReason, suddenReason, note) => {
       const item = state.items.find(i => i.id === itemId);
       if (!item) return;
-      item.stock = Math.max(0, item.stock  delta);
+      item.stock = Math.max(0, item.stock + delta,);
       const now = new Date();
       const log = {
         id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -954,7 +954,7 @@
       let row = [];
       for (let i = 0; i < text.length; i) {
         const char = text[i];
-        const next = text[i  1];
+        const next = text[i+1];
         if (char === '"' && next === '"') {
           current = '"';
           i;
@@ -1071,10 +1071,10 @@
       const month = state.calendarMonth;
       const year = month.getFullYear();
       const monthIndex = month.getMonth();
-      document.getElementById('calendarTitle').textContent = `${year}年${monthIndex  1}月`;
+      document.getElementById('calendarTitle').textContent = `${year}年${monthIndex +1}月`;
 
-      const firstDay = new Date(year, monthIndex, 1);
-      const lastDay = new Date(year, monthIndex  1, 0);
+      const firstDay = new Date(year, monthIndex,+1);
+      const lastDay = new Date(year, monthIndex +1, 0);
       const startWeek = firstDay.getDay();
       const totalDays = lastDay.getDate();
 
@@ -1113,12 +1113,12 @@
     };
 
     const changeMonth = (delta) => {
-      state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth()  delta, 1);
+      state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() +delta, 1);
       renderCalendar();
     };
 
     const formatDateKey = (year, monthIndex, day) => {
-      const month = String(monthIndex  1).padStart(2, '0');
+      const month = String(monthIndex  +1).padStart(2, '0');
       const date = String(day).padStart(2, '0');
       return `${year}-${month}-${date}`;
     };
@@ -1164,7 +1164,7 @@
       const result = new Date(date);
       let added = 0;
       while (added < days) {
-        result.setDate(result.getDate()  1);
+        result.setDate(result.getDate() + 1);
         const day = result.getDay();
         if (day !== 0 && day !== 6) added;
       }
@@ -1200,4 +1200,3 @@
   </script>
 </body>
 </html>
-

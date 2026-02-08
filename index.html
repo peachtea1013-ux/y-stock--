@@ -1,1470 +1,1203 @@
-diff --git a/index.html b/index.html
-index 560b18c5c3e36151ae06260c228e4053b14974db..7494fa13983f1c35bd55cbc8c450399fddeb6036 100644
---- a/index.html
-+++ b/index.html
-@@ -1,263 +1,1202 @@
--<!DOCTYPE html>
--<html lang="ja">
--<head>
--    <meta charset="UTF-8">
--    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
--    <title>マイ在庫管理プロ</title>
--    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
--    <style>
--        :root { --primary: #007bff; --danger: #dc3545; --success: #28a745; --warning: #ffc107; --dark: #343a40; }
--        body { font-family: sans-serif; margin: 0; padding-bottom: 80px; background: #f4f7f6; color: #333; font-size: 14px; }
--        
--        /* 認証前の画面を隠す */
--        #mainContent { display: none; }
--
--        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: white; display: flex; border-top: 1px solid #ddd; z-index: 100; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
--        .nav-item { flex: 1; padding: 15px 5px; text-align: center; font-size: 0.8rem; color: #666; border-top: 3px solid transparent; }
--        .nav-item.active { color: var(--primary); font-weight: bold; border-top-color: var(--primary); }
--
--        .page { display: none; padding: 15px; animation: fadeIn 0.2s; }
--        .page.active { display: block; }
--        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
--
--        .card { background: white; border-radius: 12px; padding: 15px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
--        .flex-row { display: flex; justify-content: space-between; align-items: center; }
--        .input-std { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; margin-bottom: 10px; font-size: 16px; }
--        
--        .alert-box { background: #fff5f5; border: 1px solid #feb2b2; }
--        button { border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.1s; }
--        button:active { transform: scale(0.95); opacity: 0.8; }
--        .btn-action { padding: 12px 5px; color: white; flex: 1; font-size: 0.9rem; }
--        .btn-use { background: var(--danger); }
--        .btn-in { background: var(--success); }
--        .btn-req { background: var(--warning); color: #333; }
--        .btn-main { background: var(--primary); color: white; width: 100%; padding: 15px; font-size: 1rem; }
--
--        #inventoryOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 200; overflow-y: auto; display: none; }
--        .category-badge { font-size: 0.75rem; background: #eef2f7; padding: 3px 10px; border-radius: 12px; color: #555; }
--    </style>
--</head>
--<body>
--
--    <div id="mainContent">
--        <div id="page-stock" class="page active">
--            <div style="background:var(--dark); color:white; padding:15px; border-radius:12px; text-align:center; margin-bottom:15px;">
--                <small>在庫総資産</small><br>
--                <span style="font-size:1.6rem; font-weight:bold;">¥ <span id="totalMoneyDisplay">0</span></span>
--            </div>
--            <div style="display:flex; gap:8px; margin-bottom:15px;">
--                <input type="text" id="searchInput" class="input-std" style="flex:2; margin-bottom:0;" placeholder="🔍 検索..." oninput="render()">
--                <select id="catFilter" class="input-std" style="flex:1; margin-bottom:0;" onchange="render()"></select>
--            </div>
--            <div id="shortageArea"></div>
--            <div id="stockList"></div>
--        </div>
--
--        <div id="page-history" class="page">
--            <h3>活動履歴</h3>
--            <div id="historyList"></div>
--        </div>
--
--        <div id="page-chart" class="page">
--            <h3>月間使用トレンド</h3>
--            <canvas id="usageChart" width="400" height="300"></canvas>
--        </div>
--
--        <div id="page-manage" class="page">
--            <h3>管理・ツール</h3>
--            <button class="btn-main" style="background:#6f42c1; margin-bottom:20px;" onclick="openInventoryMode()">📦 棚卸しを開始する</button>
--
--            <div class="card">
--                <h4 style="margin:0 0 12px 0;">新規アイテム登録</h4>
--                <input type="text" id="newName" class="input-std" placeholder="商品名" list="list-names">
--                <div style="display:flex; gap:8px;">
--                    <input type="text" id="newMaker" class="input-std" placeholder="メーカー" list="list-makers">
--                    <input type="text" id="newModel" class="input-std" placeholder="型式" list="list-models">
--                </div>
--                <div style="display:flex; gap:8px;">
--                    <input type="text" id="newCat" class="input-std" placeholder="カテゴリ" list="list-cats">
--                    <input type="number" id="newPrice" class="input-std" placeholder="単価(¥)" inputmode="numeric">
--                </div>
--                <input type="number" id="newMin" class="input-std" placeholder="最低在庫通知ライン" inputmode="numeric">
--                <button class="btn-main" onclick="addItem()">マスターに追加</button>
--            </div>
--
--            <div class="card" style="background:#f0fff4; border:1px solid #c6f6d5;">
--                <h4 style="margin:0 0 10px 0;">データエクスポート</h4>
--                <button onclick="copyAllToExcel()" style="background:#2f855a; color:white; width:100%; padding:12px;">Excel一括コピー</button>
--            </div>
--
--            <h4>登録済みマスター</h4>
--            <div id="editList"></div>
--        </div>
--
--        <div id="inventoryOverlay">
--            <div style="padding:20px;">
--                <div class="flex-row">
--                    <h2>実在庫の確認</h2>
--                    <button onclick="closeInventoryMode()" style="background:#eee; padding:8px 15px;">戻る</button>
--                </div>
--                <div id="inventoryList"></div>
--                <button class="btn-main" style="background:var(--success); margin-top:20px;" onclick="finishInventory()">棚卸しを確定</button>
--            </div>
--        </div>
--
--        <nav class="bottom-nav">
--            <div class="nav-item active" onclick="showPage('stock')">在庫</div>
--            <div class="nav-item" onclick="showPage('history')">履歴</div>
--            <div class="nav-item" onclick="showPage('chart')">分析</div>
--            <div class="nav-item" onclick="showPage('manage')">管理</div>
--        </nav>
--    </div>
--
--    <datalist id="list-names"></datalist>
--    <datalist id="list-makers"></datalist>
--    <datalist id="list-models"></datalist>
--    <datalist id="list-cats"></datalist>
--
--<script>
--    // --- 🔑 セキュリティ設定 ---
--    const APP_PASS = "1234"; // ★ここを好きなパスワードに変更してください
--
--    function checkAuth() {
--        const input = prompt("パスワードを入力してください");
--        if (input === APP_PASS) {
--            document.getElementById('mainContent').style.display = 'block';
--            render();
--        } else {
--            alert("パスワードが違います。アクセスを拒否しました。");
--            document.body.innerHTML = "<h2 style='text-align:center;margin-top:50px;'>認証が必要です。ページを再読み込みしてください。</h2>";
--        }
--    }
--
--    // 起動時に認証を実行
--    window.onload = checkAuth;
--
--    // --- 📦 在庫管理ロジック ---
--    let items = JSON.parse(localStorage.getItem('myStockV3_items')) || [];
--    let logs = JSON.parse(localStorage.getItem('myStockV3_logs')) || [];
--
--    function showPage(pageId) {
--        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
--        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
--        document.getElementById('page-' + pageId).classList.add('active');
--        event.currentTarget.classList.add('active');
--        if(pageId === 'chart') updateChart();
--        render();
--    }
--
--    function save() {
--        localStorage.setItem('myStockV3_items', JSON.stringify(items));
--        localStorage.setItem('myStockV3_logs', JSON.stringify(logs));
--        render();
--    }
--
--    function addItem() {
--        const ids = ['newName', 'newMaker', 'newModel', 'newCat', 'newPrice', 'newMin'];
--        const [n, mk, md, c, p, mn] = ids.map(id => document.getElementById(id).value);
--        if(!n) return alert("名前は必須です");
--        items.push({ id: Date.now(), name: n, maker: mk||'-', model: md||'-', category: c||'未分類', price: parseInt(p)||0, minStock: parseInt(mn)||0, count: 0 });
--        ids.forEach(id => document.getElementById(id).value = '');
--        save();
--    }
--
--    function doAction(id, type, multiplier) {
--        const input = document.getElementById(`qty-${id}`);
--        const val = parseInt(input.value) || 1;
--        const item = items.find(i => i.id === id);
--        if(type !== '依頼') item.count = Math.max(0, item.count + (val * multiplier));
--        logs.unshift({ date: new Date().toLocaleString('ja-JP'), month: new Date().toISOString().slice(0,7), name: item.name, type: type, qty: val, price: item.price });
--        if(logs.length > 200) logs.pop();
--        input.value = '';
--        save();
--    }
--
--    function render() {
--        const search = document.getElementById('searchInput').value.toLowerCase();
--        const filter = document.getElementById('catFilter').value || 'all';
--        
--        const updateDL = (id, key) => {
--            const vals = [...new Set(items.map(i => i[key]))].filter(v => v && v !== '-');
--            document.getElementById(id).innerHTML = vals.map(v => `<option value="${v}">`).join('');
--        };
--        ['list-names','list-makers','list-models','list-cats'].forEach((id,idx)=>updateDL(id,['name','maker','model','category'][idx]));
--
--        const cats = [...new Set(items.map(i => i.category))];
--        document.getElementById('catFilter').innerHTML = '<option value="all">全カテゴリ</option>' + cats.map(c => `<option value="${c}" ${filter===c?'selected':''}>${c}</option>`).join('');
--
--        document.getElementById('totalMoneyDisplay').innerText = items.reduce((s, i) => s + (i.count * i.price), 0).toLocaleString();
--
--        const shorts = items.filter(i => i.count <= i.minStock);
--        document.getElementById('shortageArea').innerHTML = shorts.length ? `<div class="card alert-box"><div style="color:var(--danger);font-weight:bold;margin-bottom:5px;">⚠️ 要補充</div>${shorts.map(s => `<small>${s.name}</small>`).join(', ')}</div>` : '';
--
--        const filtered = items.filter(i => {
--            const mS = i.name.toLowerCase().includes(search) || i.maker.toLowerCase().includes(search) || i.model.toLowerCase().includes(search);
--            const mC = filter === 'all' || i.category === filter;
--            return mS && mC;
--        });
--
--        document.getElementById('stockList').innerHTML = filtered.map(i => `
--            <div class="card ${i.count <= i.minStock ? 'alert-box' : ''}">
--                <div class="flex-row">
--                    <div style="flex:1;">
--                        <span class="category-badge">${i.category}</span>
--                        <div style="font-size:0.75rem; color:#888; margin:4px 0;">${i.maker} / ${i.model}</div>
--                        <strong style="font-size:1.1rem;">${i.name}</strong>
--                    </div>
--                    <div style="text-align:right;">
--                        <div style="font-size:1.6rem; font-weight:bold;">${i.count}</div>
--                        <div style="font-size:0.75rem; color:var(--primary);">¥${(i.count * i.price).toLocaleString()}</div>
--                    </div>
--                </div>
--                <div style="display:flex; gap:8px; margin-top:12px;">
--                    <input type="number" id="qty-${i.id}" class="input-std" style="flex:1; margin:0; text-align:center;" placeholder="1" inputmode="numeric">
--                    <button class="btn-action btn-use" onclick="doAction(${i.id}, '使用', -1)">使用</button>
--                    <button class="btn-action btn-in" onclick="doAction(${i.id}, '納入', 1)">納入</button>
--                    <button class="btn-action btn-req" onclick="doAction(${i.id}, '依頼', 0)">依頼</button>
--                </div>
--            </div>
--        `).join('');
--
--        document.getElementById('historyList').innerHTML = logs.map(l => `<div style="padding:10px; border-bottom:1px solid #eee; font-size:0.85rem;">${l.date.slice(5)} | <strong>${l.name}</strong> | ${l.type}(${l.qty})</div>`).join('');
--        document.getElementById('editList').innerHTML = items.map(i => `<div class="card flex-row"><span>${i.name}</span><button onclick="if(confirm('削除？')){items=items.filter(x=>x.id!=${i.id});save();}" style="color:red; background:none;">削除</button></div>`).join('');
--    }
--
--    function openInventoryMode() {
--        document.getElementById('inventoryOverlay').style.display = 'block';
--        document.getElementById('inventoryList').innerHTML = items.map(i => `
--            <div class="card flex-row">
--                <span><strong>${i.name}</strong><br><small>${i.model}</small></span>
--                <span>現物: <input type="number" id="inv-${i.id}" value="${i.count}" style="width:70px; padding:10px;" inputmode="numeric"></span>
--            </div>`).join('');
--    }
--    function closeInventoryMode() { document.getElementById('inventoryOverlay').style.display = 'none'; }
--    function finishInventory() {
--        items.forEach(i => {
--            const nV = parseInt(document.getElementById(`inv-${i.id}`).value) || 0;
--            if(i.count !== nV) {
--                logs.unshift({ date: new Date().toLocaleString('ja-JP'), month: new Date().toISOString().slice(0,7), name: i.name, type: '棚卸調整', qty: nV - i.count, price: i.price });
--                i.count = nV;
--            }
--        });
--        save(); closeInventoryMode(); alert("棚卸完了");
--    }
--
--    let chartObj;
--    function updateChart() {
--        const ctx = document.getElementById('usageChart').getContext('2d');
--        const mths = [...new Set(logs.map(l => l.month))].sort().slice(-6);
--        const data = mths.map(m => logs.filter(l => l.month === m && l.type === '使用').reduce((s, l) => s + l.qty, 0));
--        if(chartObj) chartObj.destroy();
--        chartObj = new Chart(ctx, { type: 'bar', data: { labels: mths, datasets: [{ label: '月間使用量', data: data, backgroundColor: '#007bff' }] } });
--    }
--
--    function copyAllToExcel() {
--        let t = "【現在在庫】\n商品名\tメーカー\t型式\tカテゴリ\t在庫数\t単価\t小計\n";
--        items.forEach(i => t += `${i.name}\t${i.maker}\t${i.model}\t${i.category}\t${i.count}\t${i.price}\t${i.count*i.price}\n`);
--        t += "\n【履歴】\n日時\t商品名\t種別\t数量\t金額\n";
--        logs.forEach(l => t += `${l.date}\t${l.name}\t${l.type}\t${l.qty}\t${l.qty*l.price}\n`);
--        navigator.clipboard.writeText(t).then(() => alert("一括コピー成功！"));
--    }
--</script>
--</body>
--</html>
-+<!DOCTYPE html>
-+<html lang="ja">
-+<head>
-+  <meta charset="UTF-8">
-+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-+  <meta name="theme-color" content="#0f172a">
-+  <title>在庫管理ツール</title>
-+  <style>
-+    :root {
-+      --primary: #2563eb;
-+      --danger: #dc2626;
-+      --warning: #f59e0b;
-+      --success: #16a34a;
-+      --dark: #0f172a;
-+      --gray: #64748b;
-+      --bg: #f8fafc;
-+    }
-+
-+    * { box-sizing: border-box; }
-+    body {
-+      margin: 0;
-+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
-+      background: var(--bg);
-+      color: #0f172a;
-+      padding-bottom: 84px;
-+      font-size: 15px;
-+    }
-+    h1, h2, h3, h4 { margin: 0 0 12px 0; }
-+    .page { display: none; padding: 16px; }
-+    .page.active { display: block; }
-+    .card {
-+      background: #fff;
-+      border-radius: 14px;
-+      padding: 14px;
-+      margin-bottom: 12px;
-+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-+    }
-+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; color: #fff; }
-+    .row { display: flex; gap: 8px; align-items: center; }
-+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-+    .input {
-+      width: 100%;
-+      padding: 12px;
-+      border-radius: 10px;
-+      border: 1px solid #e2e8f0;
-+      font-size: 16px;
-+      background: #fff;
-+    }
-+    .input.small { padding: 10px; font-size: 14px; }
-+    .input.inline { width: auto; }
-+    .btn {
-+      border: none;
-+      border-radius: 10px;
-+      padding: 12px;
-+      font-size: 14px;
-+      font-weight: 700;
-+      cursor: pointer;
-+    }
-+    .btn.primary { background: var(--primary); color: #fff; }
-+    .btn.success { background: var(--success); color: #fff; }
-+    .btn.danger { background: var(--danger); color: #fff; }
-+    .btn.warning { background: var(--warning); color: #fff; }
-+    .btn.ghost { background: transparent; border: 1px solid #cbd5f5; color: #1e293b; }
-+    .btn.block { width: 100%; }
-+    .tag { font-size: 12px; color: var(--gray); }
-+    .status-text { font-size: 12px; font-weight: 700; }
-+    .list-item { border-bottom: 1px solid #e2e8f0; padding: 10px 0; }
-+    .list-item:last-child { border-bottom: none; }
-+
-+    .bottom-nav {
-+      position: fixed;
-+      bottom: 0;
-+      left: 0;
-+      width: 100%;
-+      background: #fff;
-+      border-top: 1px solid #e2e8f0;
-+      display: flex;
-+      z-index: 50;
-+    }
-+    .nav-item {
-+      flex: 1;
-+      text-align: center;
-+      padding: 12px 6px;
-+      font-size: 12px;
-+      color: #475569;
-+      border-top: 3px solid transparent;
-+    }
-+    .nav-item.active {
-+      color: var(--primary);
-+      border-top-color: var(--primary);
-+      font-weight: 700;
-+    }
-+
-+    .alert-shortage { background: #fff1f2; border: 1px solid #fecdd3; }
-+    .alert-order { background: #fff7ed; border: 1px solid #fed7aa; }
-+
-+    .category-chip { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #fff; }
-+
-+    .modal {
-+      position: fixed;
-+      inset: 0;
-+      background: rgba(15, 23, 42, 0.6);
-+      display: none;
-+      align-items: center;
-+      justify-content: center;
-+      padding: 20px;
-+      z-index: 200;
-+    }
-+    .modal.active { display: flex; }
-+    .modal-content {
-+      background: #fff;
-+      width: 100%;
-+      max-width: 560px;
-+      border-radius: 16px;
-+      padding: 16px;
-+      max-height: 85vh;
-+      overflow-y: auto;
-+    }
-+    body.modal-open { overflow: hidden; }
-+    body.modal-open .bottom-nav { display: none; }
-+
-+    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
-+    .muted { color: #64748b; font-size: 12px; }
-+
-+    .calendar {
-+      display: grid;
-+      grid-template-columns: repeat(7, 1fr);
-+      gap: 4px;
-+      text-align: center;
-+    }
-+    .calendar .day {
-+      padding: 8px 2px;
-+      border-radius: 8px;
-+      background: #fff;
-+      border: 1px solid #e2e8f0;
-+      font-size: 12px;
-+      min-height: 54px;
-+      display: flex;
-+      flex-direction: column;
-+      justify-content: center;
-+      gap: 4px;
-+    }
-+    .calendar .day.has-event { border: 2px solid var(--primary); }
-+    .calendar .day.selected { background: #dbeafe; border-color: var(--primary); }
-+    .calendar .day-header { font-weight: 700; font-size: 12px; color: #64748b; }
-+
-+    .inventory-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-+    .inventory-row input { width: 90px; }
-+
-+    .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-+    .history-table th, .history-table td { border-bottom: 1px solid #e2e8f0; padding: 8px; text-align: left; }
-+    .history-table th { background: #f1f5f9; position: sticky; top: 0; z-index: 1; }
-+
-+    .info-box { background: #f1f5f9; border-radius: 12px; padding: 12px; }
-+    .hidden { display: none; }
-+  </style>
-+</head>
-+<body>
-+  <main>
-+    <section id="page-stock" class="page active">
-+      <div class="card" style="background:var(--dark); color:#fff;">
-+        <div class="tag">在庫総資産</div>
-+        <div style="font-size:28px; font-weight:700;">¥ <span id="totalAsset">0</span></div>
-+      </div>
-+
-+      <div class="card">
-+        <div class="row" style="gap:12px;">
-+          <input id="stockSearch" class="input" type="text" placeholder="🔍 商品名で検索" oninput="renderStockList()">
-+          <select id="stockCategoryFilter" class="input" onchange="renderStockList()"></select>
-+        </div>
-+      </div>
-+
-+      <div id="shortageNotice"></div>
-+      <div id="stockList"></div>
-+    </section>
-+
-+    <section id="page-history" class="page">
-+      <div class="card">
-+        <h3>操作履歴（最新1000件）</h3>
-+        <div class="row" style="gap:12px;">
-+          <input id="historySearch" class="input" type="text" placeholder="商品名で検索" oninput="renderHistory()">
-+          <select id="historyCategoryFilter" class="input" onchange="renderHistory()"></select>
-+        </div>
-+      </div>
-+      <div class="card" style="padding:0;">
-+        <table class="history-table">
-+          <thead>
-+            <tr>
-+              <th>日時</th>
-+              <th>商品名</th>
-+              <th>コード</th>
-+              <th>カテゴリ</th>
-+              <th>種別</th>
-+              <th>数量</th>
-+              <th>操作後在庫</th>
-+              <th>使用理由</th>
-+              <th>突発理由</th>
-+              <th></th>
-+            </tr>
-+          </thead>
-+          <tbody id="historyList"></tbody>
-+        </table>
-+      </div>
-+    </section>
-+
-+    <section id="page-master" class="page">
-+      <div class="card">
-+        <h3>商品マスタ管理</h3>
-+        <button class="btn primary block" onclick="openModal('itemModal')">＋ 新規商品を登録</button>
-+      </div>
-+
-+      <div class="card">
-+        <h4>CSV連携</h4>
-+        <div class="row" style="flex-wrap:wrap;">
-+          <button class="btn success" onclick="exportItemsCSV()">商品マスタCSV出力</button>
-+          <button class="btn success" onclick="exportHistoryCSV()">操作履歴CSV出力</button>
-+        </div>
-+        <div style="margin-top:12px;">
-+          <label class="btn ghost block" for="importCSV">CSVインポート（商品マスタ）</label>
-+          <input id="importCSV" type="file" accept=".csv" class="hidden" onchange="importItemsCSV(event)">
-+        </div>
-+      </div>
-+
-+      <div class="card">
-+        <div class="row-between">
-+          <h4>棚卸</h4>
-+          <button class="btn primary" onclick="openInventory()">棚卸開始</button>
-+        </div>
-+        <div class="muted">途中終了・再開可能。確定すると在庫が更新されます。</div>
-+      </div>
-+
-+      <div id="masterList"></div>
-+    </section>
-+
-+    <section id="page-calendar" class="page">
-+      <div class="card">
-+        <h3>交換周期・カレンダー</h3>
-+        <div class="row-between">
-+          <button class="btn ghost" onclick="changeMonth(-1)">前月</button>
-+          <div id="calendarTitle" style="font-weight:700;"></div>
-+          <button class="btn ghost" onclick="changeMonth(1)">次月</button>
-+        </div>
-+      </div>
-+      <div class="card" style="display:grid; grid-template-rows: 2fr 1fr; gap:12px;">
-+        <div>
-+          <div class="calendar" id="calendarGrid"></div>
-+        </div>
-+        <div>
-+          <div class="section-title">交換予定リスト</div>
-+          <div id="exchangeList" class="info-box"></div>
-+        </div>
-+      </div>
-+    </section>
-+  </main>
-+
-+  <nav class="bottom-nav">
-+    <div class="nav-item active" onclick="showPage('stock', event)">在庫操作</div>
-+    <div class="nav-item" onclick="showPage('history', event)">履歴</div>
-+    <div class="nav-item" onclick="showPage('master', event)">マスタ/棚卸</div>
-+    <div class="nav-item" onclick="showPage('calendar', event)">交換周期</div>
-+  </nav>
-+
-+  <datalist id="history-name"></datalist>
-+  <datalist id="history-maker"></datalist>
-+  <datalist id="history-model"></datalist>
-+  <datalist id="history-category"></datalist>
-+
-+  <div id="useModal" class="modal">
-+    <div class="modal-content">
-+      <h3>使用理由</h3>
-+      <div class="row">
-+        <select id="useReason" class="input" onchange="toggleSuddenReason()">
-+          <option value="">選択してください</option>
-+          <option value="定期交換">定期交換</option>
-+          <option value="突発交換">突発交換</option>
-+          <option value="その他">その他</option>
-+        </select>
-+      </div>
-+      <div id="suddenReasonArea" class="hidden" style="margin-top:10px;">
-+        <div class="section-title">突発交換理由</div>
-+        <div class="row" style="flex-wrap:wrap;">
-+          <button class="btn ghost" onclick="setSuddenReason('破損')">破損</button>
-+          <button class="btn ghost" onclick="setSuddenReason('紛失')">紛失</button>
-+          <button class="btn ghost" onclick="setSuddenReason('摩耗')">摩耗</button>
-+          <button class="btn ghost" onclick="setSuddenReason('劣化')">劣化</button>
-+        </div>
-+        <input id="suddenReason" class="input" type="text" placeholder="突発理由" style="margin-top:8px;" readonly>
-+      </div>
-+      <textarea id="useNote" class="input" rows="3" placeholder="備考"></textarea>
-+      <div class="row" style="margin-top:12px;">
-+        <button class="btn ghost" onclick="closeModal('useModal')">キャンセル</button>
-+        <button class="btn danger" onclick="confirmUse()">使用登録</button>
-+      </div>
-+    </div>
-+  </div>
-+
-+  <div id="orderModal" class="modal">
-+    <div class="modal-content">
-+      <h3>発注依頼</h3>
-+      <select id="orderStatus" class="input">
-+        <option value="依頼中">依頼中</option>
-+        <option value="完了">完了</option>
-+      </select>
-+      <input id="orderQty" class="input" type="number" inputmode="numeric" placeholder="発注数量">
-+      <input id="orderDate" class="input" type="date">
-+      <input id="orderDue" class="input" type="date">
-+      <textarea id="orderNote" class="input" rows="3" placeholder="備考"></textarea>
-+      <div class="row" style="margin-top:12px;">
-+        <button class="btn ghost" onclick="closeModal('orderModal')">キャンセル</button>
-+        <button class="btn warning" onclick="saveOrderRequest()">保存</button>
-+      </div>
-+    </div>
-+  </div>
-+
-+  <div id="itemModal" class="modal">
-+    <div class="modal-content">
-+      <h3>商品マスタ登録</h3>
-+      <input id="itemCode" class="input" type="text" placeholder="商品コード（重複不可）">
-+      <input id="itemName" class="input" type="text" list="history-name" placeholder="品名">
-+      <div class="row">
-+        <input id="itemMaker" class="input" type="text" list="history-maker" placeholder="メーカー">
-+        <input id="itemModel" class="input" type="text" list="history-model" placeholder="型式（品番）">
-+      </div>
-+      <input id="itemCategory" class="input" type="text" list="history-category" placeholder="カテゴリー">
-+      <div class="row">
-+        <input id="itemMin" class="input" type="number" inputmode="numeric" placeholder="最低在庫数">
-+        <input id="itemStock" class="input" type="number" inputmode="numeric" placeholder="現在庫数">
-+      </div>
-+      <div class="row">
-+        <input id="itemPrice" class="input" type="number" inputmode="numeric" placeholder="金額">
-+        <input id="itemLead" class="input" type="number" inputmode="numeric" placeholder="リードタイム（日数）">
-+      </div>
-+      <div class="row">
-+        <input id="itemCycle" class="input" type="number" inputmode="numeric" placeholder="交換周期（日数）">
-+        <input id="itemNotes" class="input" type="text" placeholder="備考">
-+      </div>
-+      <div class="row" style="margin-top:12px;">
-+        <button class="btn ghost" onclick="closeModal('itemModal')">キャンセル</button>
-+        <button class="btn primary" onclick="saveItem()">登録</button>
-+      </div>
-+    </div>
-+  </div>
-+
-+  <div id="inventoryModal" class="modal">
-+    <div class="modal-content">
-+      <div class="row-between">
-+        <h3>棚卸</h3>
-+        <button class="btn ghost" onclick="closeModal('inventoryModal')">閉じる</button>
-+      </div>
-+      <div class="row" style="gap:8px; margin-bottom:12px;">
-+        <label class="muted">カテゴリー並び替え</label>
-+        <select id="inventorySort" class="input small" onchange="renderInventoryList()">
-+          <option value="name">品名順</option>
-+          <option value="category">カテゴリー順</option>
-+        </select>
-+      </div>
-+      <div id="inventoryList"></div>
-+      <button class="btn success block" onclick="confirmInventory()">棚卸確定</button>
-+    </div>
-+  </div>
-+
-+  <div id="historyEditModal" class="modal">
-+    <div class="modal-content">
-+      <h3>履歴編集</h3>
-+      <select id="editType" class="input">
-+        <option value="使用">使用</option>
-+        <option value="納入">納入</option>
-+        <option value="棚卸">棚卸</option>
-+        <option value="修正">修正</option>
-+      </select>
-+      <input id="editQty" class="input" type="number" inputmode="numeric" placeholder="数量">
-+      <input id="editAfter" class="input" type="number" inputmode="numeric" placeholder="操作後在庫数">
-+      <input id="editReason" class="input" type="text" placeholder="使用理由">
-+      <input id="editSudden" class="input" type="text" placeholder="突発交換理由">
-+      <textarea id="editNote" class="input" rows="3" placeholder="備考"></textarea>
-+      <div class="row" style="margin-top:12px;">
-+        <button class="btn ghost" onclick="closeModal('historyEditModal')">キャンセル</button>
-+        <button class="btn primary" onclick="saveHistoryEdit()">更新</button>
-+      </div>
-+    </div>
-+  </div>
-+
-+  <script>
-+    const STORAGE_KEYS = {
-+      items: 'inventory_items_v1',
-+      logs: 'inventory_logs_v1',
-+      history: 'inventory_input_history_v1',
-+      inventoryDraft: 'inventory_draft_v1',
-+      categoryColors: 'inventory_category_colors_v1'
-+    };
-+
-+    const state = {
-+      items: [],
-+      logs: [],
-+      history: { names: [], makers: [], models: [], categories: [] },
-+      categoryColors: {},
-+      selectedItemId: null,
-+      selectedLogId: null,
-+      inventoryDraft: {},
-+      calendarMonth: new Date()
-+    };
-+
-+    const COLOR_PALETTE = [
-+      '#3b82f6', '#0ea5e9', '#22c55e', '#10b981', '#f97316',
-+      '#f43f5e', '#a855f7', '#14b8a6', '#84cc16', '#eab308'
-+    ];
-+
-+    const loadState = () => {
-+      state.items = JSON.parse(localStorage.getItem(STORAGE_KEYS.items)) || [];
-+      state.logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.logs)) || [];
-+      state.history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history)) || state.history;
-+      state.categoryColors = JSON.parse(localStorage.getItem(STORAGE_KEYS.categoryColors)) || {};
-+      state.inventoryDraft = JSON.parse(localStorage.getItem(STORAGE_KEYS.inventoryDraft)) || {};
-+    };
-+
-+    const saveState = () => {
-+      localStorage.setItem(STORAGE_KEYS.items, JSON.stringify(state.items));
-+      localStorage.setItem(STORAGE_KEYS.logs, JSON.stringify(state.logs.slice(0, 1000)));
-+      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history));
-+      localStorage.setItem(STORAGE_KEYS.categoryColors, JSON.stringify(state.categoryColors));
-+      localStorage.setItem(STORAGE_KEYS.inventoryDraft, JSON.stringify(state.inventoryDraft));
-+    };
-+
-+    const showPage = (pageId, event) => {
-+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
-+      document.getElementById(`page-${pageId}`).classList.add('active');
-+      if (event) event.currentTarget.classList.add('active');
-+      if (pageId === 'calendar') renderCalendar();
-+    };
-+
-+    const openModal = (id) => {
-+      document.getElementById(id).classList.add('active');
-+      document.body.classList.add('modal-open');
-+    };
-+
-+    const closeModal = (id) => {
-+      document.getElementById(id).classList.remove('active');
-+      document.body.classList.remove('modal-open');
-+      if (id === 'useModal') resetUseModal();
-+      if (id === 'orderModal') resetOrderModal();
-+      if (id === 'itemModal') {
-+        clearItemModal();
-+        document.querySelector('#itemModal .btn.primary').onclick = saveItem;
-+      }
-+    };
-+
-+    const resetUseModal = () => {
-+      document.getElementById('useReason').value = '';
-+      document.getElementById('suddenReason').value = '';
-+      document.getElementById('useNote').value = '';
-+      document.getElementById('suddenReasonArea').classList.add('hidden');
-+    };
-+
-+    const resetOrderModal = () => {
-+      document.getElementById('orderStatus').value = '依頼中';
-+      document.getElementById('orderQty').value = '';
-+      document.getElementById('orderDate').value = '';
-+      document.getElementById('orderDue').value = '';
-+      document.getElementById('orderNote').value = '';
-+    };
-+
-+    const toggleSuddenReason = () => {
-+      const reason = document.getElementById('useReason').value;
-+      const area = document.getElementById('suddenReasonArea');
-+      if (reason === '突発交換') {
-+        area.classList.remove('hidden');
-+      } else {
-+        area.classList.add('hidden');
-+        document.getElementById('suddenReason').value = '';
-+      }
-+    };
-+
-+    const setSuddenReason = (reason) => {
-+      document.getElementById('suddenReason').value = reason;
-+    };
-+
-+    const addToHistory = (key, value) => {
-+      if (!value) return;
-+      const arr = state.history[key];
-+      if (!arr.includes(value)) arr.push(value);
-+    };
-+
-+    const updateHistoryDatalist = () => {
-+      const setOptions = (id, list) => {
-+        document.getElementById(id).innerHTML = list.map(value => `<option value="${value}"></option>`).join('');
-+      };
-+      setOptions('history-name', state.history.names);
-+      setOptions('history-maker', state.history.makers);
-+      setOptions('history-model', state.history.models);
-+      setOptions('history-category', state.history.categories);
-+    };
-+
-+    const assignCategoryColor = (category) => {
-+      if (!category) return '#94a3b8';
-+      if (state.categoryColors[category]) return state.categoryColors[category];
-+      const color = COLOR_PALETTE[Object.keys(state.categoryColors).length % COLOR_PALETTE.length];
-+      state.categoryColors[category] = color;
-+      return color;
-+    };
-+
-+    const getCategoryList = () => {
-+      const categories = state.items.filter(item => !item.deleted).map(item => item.category).filter(Boolean);
-+      return [...new Set(categories)];
-+    };
-+
-+    const renderCategoryFilters = () => {
-+      const categories = getCategoryList();
-+      const stockFilter = document.getElementById('stockCategoryFilter');
-+      const historyFilter = document.getElementById('historyCategoryFilter');
-+      const options = ['<option value="">全カテゴリ</option>'].concat(
-+        categories.map(cat => `<option value="${cat}">${cat}</option>`)
-+      );
-+      stockFilter.innerHTML = options.join('');
-+      historyFilter.innerHTML = options.join('');
-+    };
-+
-+    const calculateTotalAsset = () => {
-+      const total = state.items.filter(item => !item.deleted)
-+        .reduce((sum, item) => sum + (item.stock * (item.price || 0)), 0);
-+      document.getElementById('totalAsset').textContent = total.toLocaleString();
-+    };
-+
-+    const getAlertClass = (item) => {
-+      if (item.stock <= item.minStock) return 'alert-shortage';
-+      if (item.orderRequest && item.orderRequest.status === '依頼中') return 'alert-order';
-+      return '';
-+    };
-+
-+    const renderShortageNotice = () => {
-+      const shortage = state.items.filter(item => !item.deleted && item.stock <= item.minStock);
-+      const container = document.getElementById('shortageNotice');
-+      if (shortage.length === 0) {
-+        container.innerHTML = '';
-+        return;
-+      }
-+      container.innerHTML = `
-+        <div class="card alert-shortage">
-+          <div style="font-weight:700; color:var(--danger); margin-bottom:6px;">購入依頼してください</div>
-+          <div>${shortage.map(item => item.name).join(' / ')}</div>
-+        </div>
-+      `;
-+    };
-+
-+    const renderStockList = () => {
-+      const search = document.getElementById('stockSearch').value.trim().toLowerCase();
-+      const category = document.getElementById('stockCategoryFilter').value;
-+      const list = state.items.filter(item => !item.deleted).filter(item => {
-+        const matchesSearch = item.name.toLowerCase().includes(search);
-+        const matchesCategory = !category || item.category === category;
-+        return matchesSearch && matchesCategory;
-+      });
-+
-+      const container = document.getElementById('stockList');
-+      container.innerHTML = list.map(item => {
-+        const categoryColor = assignCategoryColor(item.category);
-+        const alertClass = getAlertClass(item);
-+        const orderInfo = item.orderRequest && item.orderRequest.status === '依頼中'
-+          ? `<div class="muted">発注: ${item.orderRequest.qty || '-'} / ${item.orderRequest.orderDate || '-'} / ${item.orderRequest.expectedDate || '-'}</div>`
-+          : '';
-+        const shortageText = item.stock <= item.minStock ? '<div class="status-text" style="color:var(--danger);">購入依頼してください</div>' : '';
-+        const orderStatus = item.orderRequest
-+          ? `<div class="status-text" style="color:${item.orderRequest.status === '依頼中' ? 'var(--warning)' : 'var(--success)'};">発注${item.orderRequest.status}</div>`
-+          : '';
-+        return `
-+          <div class="card ${alertClass}">
-+            <div class="row-between">
-+              <div>
-+                <span class="category-chip" style="background:${categoryColor};">${item.category || '未分類'}</span>
-+                <div class="muted">${item.maker} / ${item.model}</div>
-+                <div style="font-size:18px; font-weight:700;">${item.name}</div>
-+                ${orderStatus}
-+                ${orderInfo}
-+                ${shortageText}
-+              </div>
-+              <div style="text-align:right;">
-+                <div style="font-size:26px; font-weight:700;">${item.stock}</div>
-+                <div class="muted">¥${(item.stock * (item.price || 0)).toLocaleString()}</div>
-+              </div>
-+            </div>
-+            <div class="row" style="margin-top:12px;">
-+              <input id="qty-${item.id}" type="number" inputmode="numeric" class="input small" placeholder="数量">
-+              <button class="btn danger" onclick="openUseModal(${item.id})">使用</button>
-+              <button class="btn success" onclick="receiveItem(${item.id})">納入</button>
-+              <button class="btn warning" onclick="openOrderModal(${item.id})">発注</button>
-+            </div>
-+          </div>
-+        `;
-+      }).join('');
-+    };
-+
-+    const renderMasterList = () => {
-+      const container = document.getElementById('masterList');
-+      const list = state.items.filter(item => !item.deleted);
-+      container.innerHTML = list.map(item => {
-+        return `
-+          <div class="card">
-+            <div class="row-between">
-+              <div>
-+                <div style="font-weight:700;">${item.name}</div>
-+                <div class="muted">コード: ${item.code} / ${item.category}</div>
-+                <div class="muted">最低在庫: ${item.minStock} / 現在庫: ${item.stock}</div>
-+                <div class="muted">交換周期: ${item.cycleDays || '-'}日 / 最終棚卸: ${item.lastInventoryDate || '-'}</div>
-+              </div>
-+              <div class="row" style="flex-direction:column;">
-+                <button class="btn ghost" onclick="editItem('${item.id}')">編集</button>
-+                <button class="btn ghost" onclick="deleteItem('${item.id}')" style="color:var(--danger);">削除</button>
-+              </div>
-+            </div>
-+          </div>
-+        `;
-+      }).join('');
-+    };
-+
-+    const renderHistory = () => {
-+      const search = document.getElementById('historySearch').value.trim().toLowerCase();
-+      const category = document.getElementById('historyCategoryFilter').value;
-+      const list = state.logs
-+        .filter(log => !category || log.category === category)
-+        .filter(log => (log.itemName || '').toLowerCase().includes(search))
-+        .slice(0, 1000);
-+
-+      const tbody = document.getElementById('historyList');
-+      tbody.innerHTML = list.map(log => `
-+        <tr>
-+          <td>${log.date}</td>
-+          <td>${log.itemName}</td>
-+          <td>${log.itemCode}</td>
-+          <td>${log.category}</td>
-+          <td>${log.type}</td>
-+          <td>${log.qty}</td>
-+          <td>${log.afterStock}</td>
-+          <td>${log.useReason || '-'}</td>
-+          <td>${log.suddenReason || '-'}</td>
-+          <td><button class="btn ghost" onclick="openHistoryEdit('${log.id}')">編集</button></td>
-+        </tr>
-+      `).join('');
-+    };
-+
-+    const openUseModal = (itemId) => {
-+      const qty = document.getElementById(`qty-${itemId}`).value;
-+      if (!qty || Number(qty) <= 0) {
-+        alert('数量を入力してください');
-+        return;
-+      }
-+      state.selectedItemId = itemId;
-+      openModal('useModal');
-+    };
-+
-+    const confirmUse = () => {
-+      const reason = document.getElementById('useReason').value;
-+      if (!reason) {
-+        alert('使用理由を選択してください');
-+        return;
-+      }
-+      const suddenReason = document.getElementById('suddenReason').value;
-+      if (reason === '突発交換' && !suddenReason) {
-+        alert('突発交換理由を選択してください');
-+        return;
-+      }
-+      const note = document.getElementById('useNote').value;
-+      const qty = Number(document.getElementById(`qty-${state.selectedItemId}`).value);
-+      updateStock(state.selectedItemId, -qty, '使用', reason, suddenReason, note);
-+      document.getElementById(`qty-${state.selectedItemId}`).value = '';
-+      closeModal('useModal');
-+    };
-+
-+    const receiveItem = (itemId) => {
-+      const qty = Number(document.getElementById(`qty-${itemId}`).value);
-+      if (!qty || qty <= 0) {
-+        alert('数量を入力してください');
-+        return;
-+      }
-+      updateStock(itemId, qty, '納入', '', '', '');
-+      document.getElementById(`qty-${itemId}`).value = '';
-+    };
-+
-+    const openOrderModal = (itemId) => {
-+      state.selectedItemId = itemId;
-+      const item = state.items.find(i => i.id === itemId);
-+      if (item && item.orderRequest) {
-+        document.getElementById('orderStatus').value = item.orderRequest.status;
-+        document.getElementById('orderQty').value = item.orderRequest.qty || '';
-+        document.getElementById('orderDate').value = item.orderRequest.orderDate || '';
-+        document.getElementById('orderDue').value = item.orderRequest.expectedDate || '';
-+        document.getElementById('orderNote').value = item.orderRequest.note || '';
-+      }
-+      openModal('orderModal');
-+    };
-+
-+    const saveOrderRequest = () => {
-+      const item = state.items.find(i => i.id === state.selectedItemId);
-+      if (!item) return;
-+      item.orderRequest = {
-+        status: document.getElementById('orderStatus').value,
-+        qty: Number(document.getElementById('orderQty').value) || 0,
-+        orderDate: document.getElementById('orderDate').value,
-+        expectedDate: document.getElementById('orderDue').value,
-+        note: document.getElementById('orderNote').value
-+      };
-+      saveAll();
-+      closeModal('orderModal');
-+    };
-+
-+    const updateStock = (itemId, delta, type, useReason, suddenReason, note) => {
-+      const item = state.items.find(i => i.id === itemId);
-+      if (!item) return;
-+      item.stock = Math.max(0, item.stock + delta);
-+      const now = new Date();
-+      const log = {
-+        id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-+        timestamp: now.getTime(),
-+        date: now.toLocaleString('ja-JP'),
-+        itemCode: item.code,
-+        itemName: item.name,
-+        category: item.category,
-+        type,
-+        qty: Math.abs(delta),
-+        afterStock: item.stock,
-+        useReason,
-+        suddenReason,
-+        note,
-+        editedAt: ''
-+      };
-+      state.logs.unshift(log);
-+      if (type === '使用') item.lastUseDate = now.toISOString().slice(0, 10);
-+      saveAll();
-+    };
-+
-+    const saveItem = () => {
-+      const code = document.getElementById('itemCode').value.trim();
-+      if (!code) return alert('商品コードは必須です');
-+      const exists = state.items.find(item => item.code === code && !item.deleted);
-+      if (exists) return alert('商品コードが重複しています');
-+
-+      const item = {
-+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-+        code,
-+        name: document.getElementById('itemName').value.trim(),
-+        maker: document.getElementById('itemMaker').value.trim(),
-+        model: document.getElementById('itemModel').value.trim(),
-+        category: document.getElementById('itemCategory').value.trim(),
-+        minStock: Number(document.getElementById('itemMin').value) || 0,
-+        stock: Number(document.getElementById('itemStock').value) || 0,
-+        baseStock: Number(document.getElementById('itemStock').value) || 0,
-+        price: Number(document.getElementById('itemPrice').value) || 0,
-+        leadTime: Number(document.getElementById('itemLead').value) || 0,
-+        cycleDays: Number(document.getElementById('itemCycle').value) || 0,
-+        notes: document.getElementById('itemNotes').value.trim(),
-+        deleted: false,
-+        orderRequest: null,
-+        lastInventoryDate: '',
-+        lastUseDate: ''
-+      };
-+
-+      addToHistory('names', item.name);
-+      addToHistory('makers', item.maker);
-+      addToHistory('models', item.model);
-+      addToHistory('categories', item.category);
-+      assignCategoryColor(item.category);
-+
-+      state.items.push(item);
-+      clearItemModal();
-+      saveAll();
-+      closeModal('itemModal');
-+    };
-+
-+    const clearItemModal = () => {
-+      ['itemCode','itemName','itemMaker','itemModel','itemCategory','itemMin','itemStock','itemPrice','itemLead','itemCycle','itemNotes']
-+        .forEach(id => { document.getElementById(id).value = ''; });
-+    };
-+
-+    const editItem = (itemId) => {
-+      const item = state.items.find(i => i.id === itemId);
-+      if (!item) return;
-+      document.getElementById('itemCode').value = item.code;
-+      document.getElementById('itemName').value = item.name;
-+      document.getElementById('itemMaker').value = item.maker;
-+      document.getElementById('itemModel').value = item.model;
-+      document.getElementById('itemCategory').value = item.category;
-+      document.getElementById('itemMin').value = item.minStock;
-+      document.getElementById('itemStock').value = item.stock;
-+      document.getElementById('itemPrice').value = item.price;
-+      document.getElementById('itemLead').value = item.leadTime;
-+      document.getElementById('itemCycle').value = item.cycleDays;
-+      document.getElementById('itemNotes').value = item.notes;
-+      openModal('itemModal');
-+
-+      const saveButton = document.querySelector('#itemModal .btn.primary');
-+      saveButton.onclick = () => {
-+        const newCode = document.getElementById('itemCode').value.trim();
-+        if (!newCode) return alert('商品コードは必須です');
-+        if (newCode !== item.code && state.items.find(other => other.code === newCode && !other.deleted)) {
-+          return alert('商品コードが重複しています');
-+        }
-+        item.code = newCode;
-+        item.name = document.getElementById('itemName').value.trim();
-+        item.maker = document.getElementById('itemMaker').value.trim();
-+        item.model = document.getElementById('itemModel').value.trim();
-+        item.category = document.getElementById('itemCategory').value.trim();
-+        item.minStock = Number(document.getElementById('itemMin').value) || 0;
-+        item.stock = Number(document.getElementById('itemStock').value) || 0;
-+        item.baseStock = item.stock;
-+        item.price = Number(document.getElementById('itemPrice').value) || 0;
-+        item.leadTime = Number(document.getElementById('itemLead').value) || 0;
-+        item.cycleDays = Number(document.getElementById('itemCycle').value) || 0;
-+        item.notes = document.getElementById('itemNotes').value.trim();
-+
-+        addToHistory('names', item.name);
-+        addToHistory('makers', item.maker);
-+        addToHistory('models', item.model);
-+        addToHistory('categories', item.category);
-+        assignCategoryColor(item.category);
-+
-+        clearItemModal();
-+        closeModal('itemModal');
-+        saveAll();
-+        document.querySelector('#itemModal .btn.primary').onclick = saveItem;
-+      };
-+    };
-+
-+    const deleteItem = (itemId) => {
-+      const item = state.items.find(i => i.id === itemId);
-+      if (!item) return;
-+      if (!confirm('削除しますか？（論理削除）')) return;
-+      item.deleted = true;
-+      saveAll();
-+    };
-+
-+    const openInventory = () => {
-+      renderInventoryList();
-+      openModal('inventoryModal');
-+    };
-+
-+    const renderInventoryList = () => {
-+      const sortBy = document.getElementById('inventorySort').value;
-+      const items = state.items.filter(item => !item.deleted);
-+      items.sort((a, b) => {
-+        if (sortBy === 'category') {
-+          return (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name);
-+        }
-+        return a.name.localeCompare(b.name);
-+      });
-+      const container = document.getElementById('inventoryList');
-+      container.innerHTML = items.map(item => {
-+        const draftValue = state.inventoryDraft[item.id];
-+        const value = draftValue !== undefined ? draftValue : item.stock;
-+        return `
-+          <div class="card">
-+            <div class="inventory-row">
-+              <div>
-+                <div style="font-weight:700;">${item.name}</div>
-+                <div class="muted">${item.category} / 現在庫: ${item.stock}</div>
-+              </div>
-+              <input class="input small" type="number" inputmode="numeric" value="${value}" onchange="updateInventoryDraft('${item.id}', this.value)">
-+            </div>
-+          </div>
-+        `;
-+      }).join('');
-+    };
-+
-+    const updateInventoryDraft = (itemId, value) => {
-+      state.inventoryDraft[itemId] = Number(value) || 0;
-+      saveState();
-+    };
-+
-+    const confirmInventory = () => {
-+      const now = new Date();
-+      state.items.filter(item => !item.deleted).forEach(item => {
-+        const newValue = state.inventoryDraft[item.id];
-+        if (newValue === undefined) return;
-+        if (item.stock !== newValue) {
-+          item.stock = newValue;
-+          item.lastInventoryDate = now.toISOString().slice(0, 10);
-+          const log = {
-+            id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-+            timestamp: now.getTime(),
-+            date: now.toLocaleString('ja-JP'),
-+            itemCode: item.code,
-+            itemName: item.name,
-+            category: item.category,
-+            type: '棚卸',
-+            qty: newValue,
-+            afterStock: newValue,
-+            useReason: '',
-+            suddenReason: '',
-+            note: '棚卸確定',
-+            editedAt: ''
-+          };
-+          state.logs.unshift(log);
-+        }
-+      });
-+      state.inventoryDraft = {};
-+      saveAll();
-+      closeModal('inventoryModal');
-+      alert('棚卸を確定しました');
-+    };
-+
-+    const openHistoryEdit = (logId) => {
-+      const log = state.logs.find(l => l.id === logId);
-+      if (!log) return;
-+      state.selectedLogId = logId;
-+      document.getElementById('editType').value = log.type;
-+      document.getElementById('editQty').value = log.qty;
-+      document.getElementById('editAfter').value = log.afterStock;
-+      document.getElementById('editReason').value = log.useReason || '';
-+      document.getElementById('editSudden').value = log.suddenReason || '';
-+      document.getElementById('editNote').value = log.note || '';
-+      openModal('historyEditModal');
-+    };
-+
-+    const saveHistoryEdit = () => {
-+      const log = state.logs.find(l => l.id === state.selectedLogId);
-+      if (!log) return;
-+      log.type = document.getElementById('editType').value;
-+      log.qty = Number(document.getElementById('editQty').value) || 0;
-+      log.afterStock = Number(document.getElementById('editAfter').value) || 0;
-+      log.useReason = document.getElementById('editReason').value;
-+      log.suddenReason = document.getElementById('editSudden').value;
-+      log.note = document.getElementById('editNote').value;
-+      log.editedAt = new Date().toISOString();
-+      recalcStocks();
-+      saveAll();
-+      closeModal('historyEditModal');
-+    };
-+
-+    const recalcStocks = () => {
-+      const itemsByCode = Object.fromEntries(state.items.map(item => [item.code, item]));
-+      state.items.forEach(item => {
-+        item.stock = item.baseStock || 0;
-+        item.lastUseDate = '';
-+      });
-+      const logsAsc = [...state.logs].sort((a, b) => a.timestamp - b.timestamp);
-+      logsAsc.forEach(log => {
-+        const item = itemsByCode[log.itemCode];
-+        if (!item || item.deleted) return;
-+        if (log.type === '使用') {
-+          item.stock = Math.max(0, item.stock - log.qty);
-+          item.lastUseDate = new Date(log.timestamp).toISOString().slice(0, 10);
-+          log.afterStock = item.stock;
-+        } else if (log.type === '納入') {
-+          item.stock += log.qty;
-+          log.afterStock = item.stock;
-+        } else if (log.type === '棚卸' || log.type === '修正') {
-+          item.stock = log.afterStock || log.qty;
-+        }
-+      });
-+    };
-+
-+    const parseCSV = (text) => {
-+      const rows = [];
-+      let current = '';
-+      let inQuotes = false;
-+      let row = [];
-+      for (let i = 0; i < text.length; i++) {
-+        const char = text[i];
-+        const next = text[i + 1];
-+        if (char === '"' && next === '"') {
-+          current += '"';
-+          i++;
-+        } else if (char === '"') {
-+          inQuotes = !inQuotes;
-+        } else if (char === ',' && !inQuotes) {
-+          row.push(current);
-+          current = '';
-+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
-+          if (current || row.length) {
-+            row.push(current);
-+            rows.push(row);
-+            row = [];
-+            current = '';
-+          }
-+        } else {
-+          current += char;
-+        }
-+      }
-+      if (current || row.length) {
-+        row.push(current);
-+        rows.push(row);
-+      }
-+      return rows;
-+    };
-+
-+    const exportItemsCSV = () => {
-+      const headers = ['商品コード','品名','メーカー','型式','カテゴリー','最低在庫数','現在庫数','金額','リードタイム','交換周期','備考'];
-+      const rows = state.items.filter(item => !item.deleted).map(item => [
-+        item.code, item.name, item.maker, item.model, item.category, item.minStock, item.stock, item.price, item.leadTime, item.cycleDays, item.notes
-+      ]);
-+      downloadCSV('items.csv', [headers, ...rows]);
-+    };
-+
-+    const exportHistoryCSV = () => {
-+      const headers = ['日時','商品コード','商品名','カテゴリー','操作種別','数量','操作後在庫数','使用理由','突発交換理由'];
-+      const rows = state.logs.map(log => [
-+        log.date, log.itemCode, log.itemName, log.category, log.type, log.qty, log.afterStock, log.useReason, log.suddenReason
-+      ]);
-+      downloadCSV('history.csv', [headers, ...rows]);
-+    };
-+
-+    const downloadCSV = (filename, rows) => {
-+      const csv = rows.map(row => row.map(value => {
-+        const str = value === undefined ? '' : String(value);
-+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-+          return `"${str.replace(/"/g, '""')}"`;
-+        }
-+        return str;
-+      }).join(',')).join('\n');
-+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-+      const link = document.createElement('a');
-+      link.href = URL.createObjectURL(blob);
-+      link.download = filename;
-+      link.click();
-+      URL.revokeObjectURL(link.href);
-+    };
-+
-+    const importItemsCSV = async (event) => {
-+      const file = event.target.files[0];
-+      if (!file) return;
-+      const text = await file.text();
-+      const rows = parseCSV(text);
-+      if (rows.length <= 1) return;
-+      const headers = rows[0];
-+      const dataRows = rows.slice(1);
-+      dataRows.forEach(row => {
-+        const record = {};
-+        headers.forEach((header, index) => {
-+          record[header] = row[index] || '';
-+        });
-+        if (!record['商品コード']) return;
-+        const existing = state.items.find(item => item.code === record['商品コード']);
-+        const payload = {
-+          code: record['商品コード'],
-+          name: record['品名'] || '',
-+          maker: record['メーカー'] || '',
-+          model: record['型式'] || '',
-+          category: record['カテゴリー'] || '',
-+          minStock: Number(record['最低在庫数']) || 0,
-+          stock: Number(record['現在庫数']) || 0,
-+          price: Number(record['金額']) || 0,
-+          leadTime: Number(record['リードタイム']) || 0,
-+          cycleDays: Number(record['交換周期']) || 0,
-+          notes: record['備考'] || ''
-+        };
-+        if (existing) {
-+          Object.assign(existing, payload);
-+          existing.baseStock = existing.stock;
-+          existing.deleted = false;
-+        } else {
-+          state.items.push({
-+            id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-+            baseStock: payload.stock,
-+            orderRequest: null,
-+            lastInventoryDate: '',
-+            lastUseDate: '',
-+            deleted: false,
-+            ...payload
-+          });
-+        }
-+        addToHistory('names', payload.name);
-+        addToHistory('makers', payload.maker);
-+        addToHistory('models', payload.model);
-+        addToHistory('categories', payload.category);
-+        assignCategoryColor(payload.category);
-+      });
-+      saveAll();
-+      event.target.value = '';
-+      alert('インポートが完了しました');
-+    };
-+
-+    const renderCalendar = () => {
-+      const month = state.calendarMonth;
-+      const year = month.getFullYear();
-+      const monthIndex = month.getMonth();
-+      document.getElementById('calendarTitle').textContent = `${year}年${monthIndex + 1}月`;
-+
-+      const firstDay = new Date(year, monthIndex, 1);
-+      const lastDay = new Date(year, monthIndex + 1, 0);
-+      const startWeek = firstDay.getDay();
-+      const totalDays = lastDay.getDate();
-+
-+      const scheduleMap = buildExchangeSchedule();
-+      const calendarGrid = document.getElementById('calendarGrid');
-+      calendarGrid.innerHTML = '';
-+
-+      const headers = ['日','月','火','水','木','金','土'];
-+      headers.forEach(day => {
-+        const div = document.createElement('div');
-+        div.className = 'day-header';
-+        div.textContent = day;
-+        calendarGrid.appendChild(div);
-+      });
-+
-+      for (let i = 0; i < startWeek; i++) {
-+        const empty = document.createElement('div');
-+        calendarGrid.appendChild(empty);
-+      }
-+
-+      for (let day = 1; day <= totalDays; day++) {
-+        const dateKey = formatDateKey(year, monthIndex, day);
-+        const hasEvent = scheduleMap[dateKey];
-+        const cell = document.createElement('button');
-+        cell.className = `day${hasEvent ? ' has-event' : ''}`;
-+        cell.textContent = day;
-+        cell.onclick = () => selectDate(dateKey);
-+        cell.dataset.date = dateKey;
-+        calendarGrid.appendChild(cell);
-+      }
-+
-+      const today = new Date();
-+      const todayKey = today.toISOString().slice(0, 10);
-+      const withinMonth = today.getFullYear() === year && today.getMonth() === monthIndex;
-+      selectDate(withinMonth ? todayKey : formatDateKey(year, monthIndex, 1));
-+    };
-+
-+    const changeMonth = (delta) => {
-+      state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth() + delta, 1);
-+      renderCalendar();
-+    };
-+
-+    const formatDateKey = (year, monthIndex, day) => {
-+      const month = String(monthIndex + 1).padStart(2, '0');
-+      const date = String(day).padStart(2, '0');
-+      return `${year}-${month}-${date}`;
-+    };
-+
-+    const selectDate = (dateKey) => {
-+      document.querySelectorAll('.calendar .day').forEach(cell => {
-+        cell.classList.toggle('selected', cell.dataset.date === dateKey);
-+      });
-+      const scheduleMap = buildExchangeSchedule();
-+      const list = scheduleMap[dateKey] || [];
-+      const container = document.getElementById('exchangeList');
-+      if (list.length === 0) {
-+        container.textContent = '該当する交換予定はありません。';
-+        return;
-+      }
-+      container.innerHTML = list.map(item => `<div class="list-item"><strong>${item.name}</strong><div class="muted">カテゴリ: ${item.category} / 次回交換日: ${item.nextDate}</div></div>`).join('');
-+    };
-+
-+    const buildExchangeSchedule = () => {
-+      const scheduleMap = {};
-+      const items = state.items.filter(item => !item.deleted && item.cycleDays > 0);
-+      items.forEach(item => {
-+        const lastUse = getLastUseDate(item.code);
-+        if (!lastUse) return;
-+        const nextDate = addBusinessDays(new Date(lastUse), item.cycleDays);
-+        const dateKey = nextDate.toISOString().slice(0, 10);
-+        if (!scheduleMap[dateKey]) scheduleMap[dateKey] = [];
-+        scheduleMap[dateKey].push({
-+          name: item.name,
-+          category: item.category,
-+          nextDate: dateKey
-+        });
-+      });
-+      return scheduleMap;
-+    };
-+
-+    const getLastUseDate = (code) => {
-+      const log = state.logs.find(l => l.itemCode === code && l.type === '使用');
-+      return log ? new Date(log.timestamp).toISOString().slice(0, 10) : null;
-+    };
-+
-+    const addBusinessDays = (date, days) => {
-+      const result = new Date(date);
-+      let added = 0;
-+      while (added < days) {
-+        result.setDate(result.getDate() + 1);
-+        const day = result.getDay();
-+        if (day !== 0 && day !== 6) added++;
-+      }
-+      return result;
-+    };
-+
-+    const saveAll = () => {
-+      state.logs = state.logs.slice(0, 1000);
-+      saveState();
-+      updateHistoryDatalist();
-+      renderCategoryFilters();
-+      calculateTotalAsset();
-+      renderShortageNotice();
-+      renderStockList();
-+      renderHistory();
-+      renderMasterList();
-+      renderCalendar();
-+    };
-+
-+    const init = () => {
-+      loadState();
-+      updateHistoryDatalist();
-+      renderCategoryFilters();
-+      calculateTotalAsset();
-+      renderShortageNotice();
-+      renderStockList();
-+      renderHistory();
-+      renderMasterList();
-+      renderCalendar();
-+    };
-+
-+    init();
-+  </script>
-+</body>
-+</html>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f172a">
+  <title>在庫管理ツール</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --danger: #dc2626;
+      --warning: #f59e0b;
+      --success: #16a34a;
+      --dark: #0f172a;
+      --gray: #64748b;
+      --bg: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+      background: var(--bg);
+      color: #0f172a;
+      padding-bottom: 84px;
+      font-size: 15px;
+    }
+    h1, h2, h3, h4 { margin: 0 0 12px 0; }
+    .page { display: none; padding: 16px; }
+    .page.active { display: block; }
+    .card {
+      background: #fff;
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+    }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; color: #fff; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #e2e8f0;
+      font-size: 16px;
+      background: #fff;
+    }
+    .input.small { padding: 10px; font-size: 14px; }
+    .input.inline { width: auto; }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn.primary { background: var(--primary); color: #fff; }
+    .btn.success { background: var(--success); color: #fff; }
+    .btn.danger { background: var(--danger); color: #fff; }
+    .btn.warning { background: var(--warning); color: #fff; }
+    .btn.ghost { background: transparent; border: 1px solid #cbd5f5; color: #1e293b; }
+    .btn.block { width: 100%; }
+    .tag { font-size: 12px; color: var(--gray); }
+    .status-text { font-size: 12px; font-weight: 700; }
+    .list-item { border-bottom: 1px solid #e2e8f0; padding: 10px 0; }
+    .list-item:last-child { border-bottom: none; }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: #fff;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      z-index: 50;
+    }
+    .nav-item {
+      flex: 1;
+      text-align: center;
+      padding: 12px 6px;
+      font-size: 12px;
+      color: #475569;
+      border-top: 3px solid transparent;
+    }
+    .nav-item.active {
+      color: var(--primary);
+      border-top-color: var(--primary);
+      font-weight: 700;
+    }
+
+    .alert-shortage { background: #fff1f2; border: 1px solid #fecdd3; }
+    .alert-order { background: #fff7ed; border: 1px solid #fed7aa; }
+
+    .category-chip { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; color: #fff; }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 200;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: #fff;
+      width: 100%;
+      max-width: 560px;
+      border-radius: 16px;
+      padding: 16px;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    body.modal-open { overflow: hidden; }
+    body.modal-open .bottom-nav { display: none; }
+
+    .section-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .muted { color: #64748b; font-size: 12px; }
+
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      text-align: center;
+    }
+    .calendar .day {
+      padding: 8px 2px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      font-size: 12px;
+      min-height: 54px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+    }
+    .calendar .day.has-event { border: 2px solid var(--primary); }
+    .calendar .day.selected { background: #dbeafe; border-color: var(--primary); }
+    .calendar .day-header { font-weight: 700; font-size: 12px; color: #64748b; }
+
+    .inventory-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .inventory-row input { width: 90px; }
+
+    .history-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .history-table th, .history-table td { border-bottom: 1px solid #e2e8f0; padding: 8px; text-align: left; }
+    .history-table th { background: #f1f5f9; position: sticky; top: 0; z-index: 1; }
+
+    .info-box { background: #f1f5f9; border-radius: 12px; padding: 12px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <section id="page-stock" class="page active">
+      <div class="card" style="background:var(--dark); color:#fff;">
+        <div class="tag">在庫総資産</div>
+        <div style="font-size:28px; font-weight:700;">¥ <span id="totalAsset">0</span></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="gap:12px;">
+          <input id="stockSearch" class="input" type="text" placeholder="🔍 商品名で検索" oninput="renderStockList()">
+          <select id="stockCategoryFilter" class="input" onchange="renderStockList()"></select>
+        </div>
+      </div>
+
+      <div id="shortageNotice"></div>
+      <div id="stockList"></div>
+    </section>
+
+    <section id="page-history" class="page">
+      <div class="card">
+        <h3>操作履歴（最新1000件）</h3>
+        <div class="row" style="gap:12px;">
+          <input id="historySearch" class="input" type="text" placeholder="商品名で検索" oninput="renderHistory()">
+          <select id="historyCategoryFilter" class="input" onchange="renderHistory()"></select>
+        </div>
+      </div>
+      <div class="card" style="padding:0;">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>商品名</th>
+              <th>コード</th>
+              <th>カテゴリ</th>
+              <th>種別</th>
+              <th>数量</th>
+              <th>操作後在庫</th>
+              <th>使用理由</th>
+              <th>突発理由</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="historyList"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="page-master" class="page">
+      <div class="card">
+        <h3>商品マスタ管理</h3>
+        <button class="btn primary block" onclick="openModal('itemModal')"> 新規商品を登録</button>
+      </div>
+
+      <div class="card">
+        <h4>CSV連携</h4>
+        <div class="row" style="flex-wrap:wrap;">
+          <button class="btn success" onclick="exportItemsCSV()">商品マスタCSV出力</button>
+          <button class="btn success" onclick="exportHistoryCSV()">操作履歴CSV出力</button>
+        </div>
+        <div style="margin-top:12px;">
+          <label class="btn ghost block" for="importCSV">CSVインポート（商品マスタ）</label>
+          <input id="importCSV" type="file" accept=".csv" class="hidden" onchange="importItemsCSV(event)">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row-between">
+          <h4>棚卸</h4>
+          <button class="btn primary" onclick="openInventory()">棚卸開始</button>
+        </div>
+        <div class="muted">途中終了・再開可能。確定すると在庫が更新されます。</div>
+      </div>
+
+      <div id="masterList"></div>
+    </section>
+
+    <section id="page-calendar" class="page">
+      <div class="card">
+        <h3>交換周期・カレンダー</h3>
+        <div class="row-between">
+          <button class="btn ghost" onclick="changeMonth(-1)">前月</button>
+          <div id="calendarTitle" style="font-weight:700;"></div>
+          <button class="btn ghost" onclick="changeMonth(1)">次月</button>
+        </div>
+      </div>
+      <div class="card" style="display:grid; grid-template-rows: 2fr 1fr; gap:12px;">
+        <div>
+          <div class="calendar" id="calendarGrid"></div>
+        </div>
+        <div>
+          <div class="section-title">交換予定リスト</div>
+          <div id="exchangeList" class="info-box"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" onclick="showPage('stock', event)">在庫操作</div>
+    <div class="nav-item" onclick="showPage('history', event)">履歴</div>
+    <div class="nav-item" onclick="showPage('master', event)">マスタ/棚卸</div>
+    <div class="nav-item" onclick="showPage('calendar', event)">交換周期</div>
+  </nav>
+
+  <datalist id="history-name"></datalist>
+  <datalist id="history-maker"></datalist>
+  <datalist id="history-model"></datalist>
+  <datalist id="history-category"></datalist>
+
+  <div id="useModal" class="modal">
+    <div class="modal-content">
+      <h3>使用理由</h3>
+      <div class="row">
+        <select id="useReason" class="input" onchange="toggleSuddenReason()">
+          <option value="">選択してください</option>
+          <option value="定期交換">定期交換</option>
+          <option value="突発交換">突発交換</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div id="suddenReasonArea" class="hidden" style="margin-top:10px;">
+        <div class="section-title">突発交換理由</div>
+        <div class="row" style="flex-wrap:wrap;">
+          <button class="btn ghost" onclick="setSuddenReason('破損')">破損</button>
+          <button class="btn ghost" onclick="setSuddenReason('紛失')">紛失</button>
+          <button class="btn ghost" onclick="setSuddenReason('摩耗')">摩耗</button>
+          <button class="btn ghost" onclick="setSuddenReason('劣化')">劣化</button>
+        </div>
+        <input id="suddenReason" class="input" type="text" placeholder="突発理由" style="margin-top:8px;" readonly>
+      </div>
+      <textarea id="useNote" class="input" rows="3" placeholder="備考"></textarea>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn ghost" onclick="closeModal('useModal')">キャンセル</button>
+        <button class="btn danger" onclick="confirmUse()">使用登録</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="orderModal" class="modal">
+    <div class="modal-content">
+      <h3>発注依頼</h3>
+      <select id="orderStatus" class="input">
+        <option value="依頼中">依頼中</option>
+        <option value="完了">完了</option>
+      </select>
+      <input id="orderQty" class="input" type="number" inputmode="numeric" placeholder="発注数量">
+      <input id="orderDate" class="input" type="date">
+      <input id="orderDue" class="input" type="date">
+      <textarea id="orderNote" class="input" rows="3" placeholder="備考"></textarea>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn ghost" onclick="closeModal('orderModal')">キャンセル</button>
+        <button class="btn warning" onclick="saveOrderRequest()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="itemModal" class="modal">
+    <div class="modal-content">
+      <h3>商品マスタ登録</h3>
+      <input id="itemCode" class="input" type="text" placeholder="商品コード（重複不可）">
+      <input id="itemName" class="input" type="text" list="history-name" placeholder="品名">
+      <div class="row">
+        <input id="itemMaker" class="input" type="text" list="history-maker" placeholder="メーカー">
+        <input id="itemModel" class="input" type="text" list="history-model" placeholder="型式（品番）">
+      </div>
+      <input id="itemCategory" class="input" type="text" list="history-category" placeholder="カテゴリー">
+      <div class="row">
+        <input id="itemMin" class="input" type="number" inputmode="numeric" placeholder="最低在庫数">
+        <input id="itemStock" class="input" type="number" inputmode="numeric" placeholder="現在庫数">
+      </div>
+      <div class="row">
+        <input id="itemPrice" class="input" type="number" inputmode="numeric" placeholder="金額">
+        <input id="itemLead" class="input" type="number" inputmode="numeric" placeholder="リードタイム（日数）">
+      </div>
+      <div class="row">
+        <input id="itemCycle" class="input" type="number" inputmode="numeric" placeholder="交換周期（日数）">
+        <input id="itemNotes" class="input" type="text" placeholder="備考">
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn ghost" onclick="closeModal('itemModal')">キャンセル</button>
+        <button class="btn primary" onclick="saveItem()">登録</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="inventoryModal" class="modal">
+    <div class="modal-content">
+      <div class="row-between">
+        <h3>棚卸</h3>
+        <button class="btn ghost" onclick="closeModal('inventoryModal')">閉じる</button>
+      </div>
+      <div class="row" style="gap:8px; margin-bottom:12px;">
+        <label class="muted">カテゴリー並び替え</label>
+        <select id="inventorySort" class="input small" onchange="renderInventoryList()">
+          <option value="name">品名順</option>
+          <option value="category">カテゴリー順</option>
+        </select>
+      </div>
+      <div id="inventoryList"></div>
+      <button class="btn success block" onclick="confirmInventory()">棚卸確定</button>
+    </div>
+  </div>
+
+  <div id="historyEditModal" class="modal">
+    <div class="modal-content">
+      <h3>履歴編集</h3>
+      <select id="editType" class="input">
+        <option value="使用">使用</option>
+        <option value="納入">納入</option>
+        <option value="棚卸">棚卸</option>
+        <option value="修正">修正</option>
+      </select>
+      <input id="editQty" class="input" type="number" inputmode="numeric" placeholder="数量">
+      <input id="editAfter" class="input" type="number" inputmode="numeric" placeholder="操作後在庫数">
+      <input id="editReason" class="input" type="text" placeholder="使用理由">
+      <input id="editSudden" class="input" type="text" placeholder="突発交換理由">
+      <textarea id="editNote" class="input" rows="3" placeholder="備考"></textarea>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn ghost" onclick="closeModal('historyEditModal')">キャンセル</button>
+        <button class="btn primary" onclick="saveHistoryEdit()">更新</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEYS = {
+      items: 'inventory_items_v1',
+      logs: 'inventory_logs_v1',
+      history: 'inventory_input_history_v1',
+      inventoryDraft: 'inventory_draft_v1',
+      categoryColors: 'inventory_category_colors_v1'
+    };
+
+    const state = {
+      items: [],
+      logs: [],
+      history: { names: [], makers: [], models: [], categories: [] },
+      categoryColors: {},
+      selectedItemId: null,
+      selectedLogId: null,
+      inventoryDraft: {},
+      calendarMonth: new Date()
+    };
+
+    const COLOR_PALETTE = [
+      '#3b82f6', '#0ea5e9', '#22c55e', '#10b981', '#f97316',
+      '#f43f5e', '#a855f7', '#14b8a6', '#84cc16', '#eab308'
+    ];
+
+    const loadState = () => {
+      state.items = JSON.parse(localStorage.getItem(STORAGE_KEYS.items)) || [];
+      state.logs = JSON.parse(localStorage.getItem(STORAGE_KEYS.logs)) || [];
+      state.history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history)) || state.history;
+      state.categoryColors = JSON.parse(localStorage.getItem(STORAGE_KEYS.categoryColors)) || {};
+      state.inventoryDraft = JSON.parse(localStorage.getItem(STORAGE_KEYS.inventoryDraft)) || {};
+    };
+
+    const saveState = () => {
+      localStorage.setItem(STORAGE_KEYS.items, JSON.stringify(state.items));
+      localStorage.setItem(STORAGE_KEYS.logs, JSON.stringify(state.logs.slice(0, 1000)));
+      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(state.history));
+      localStorage.setItem(STORAGE_KEYS.categoryColors, JSON.stringify(state.categoryColors));
+      localStorage.setItem(STORAGE_KEYS.inventoryDraft, JSON.stringify(state.inventoryDraft));
+    };
+
+    const showPage = (pageId, event) => {
+      document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      document.getElementById(`page-${pageId}`).classList.add('active');
+      if (event) event.currentTarget.classList.add('active');
+      if (pageId === 'calendar') renderCalendar();
+    };
+
+    const openModal = (id) => {
+      document.getElementById(id).classList.add('active');
+      document.body.classList.add('modal-open');
+    };
+
+    const closeModal = (id) => {
+      document.getElementById(id).classList.remove('active');
+      document.body.classList.remove('modal-open');
+      if (id === 'useModal') resetUseModal();
+      if (id === 'orderModal') resetOrderModal();
+      if (id === 'itemModal') {
+        clearItemModal();
+        document.querySelector('#itemModal .btn.primary').onclick = saveItem;
+      }
+    };
+
+    const resetUseModal = () => {
+      document.getElementById('useReason').value = '';
+      document.getElementById('suddenReason').value = '';
+      document.getElementById('useNote').value = '';
+      document.getElementById('suddenReasonArea').classList.add('hidden');
+    };
+
+    const resetOrderModal = () => {
+      document.getElementById('orderStatus').value = '依頼中';
+      document.getElementById('orderQty').value = '';
+      document.getElementById('orderDate').value = '';
+      document.getElementById('orderDue').value = '';
+      document.getElementById('orderNote').value = '';
+    };
+
+    const toggleSuddenReason = () => {
+      const reason = document.getElementById('useReason').value;
+      const area = document.getElementById('suddenReasonArea');
+      if (reason === '突発交換') {
+        area.classList.remove('hidden');
+      } else {
+        area.classList.add('hidden');
+        document.getElementById('suddenReason').value = '';
+      }
+    };
+
+    const setSuddenReason = (reason) => {
+      document.getElementById('suddenReason').value = reason;
+    };
+
+    const addToHistory = (key, value) => {
+      if (!value) return;
+      const arr = state.history[key];
+      if (!arr.includes(value)) arr.push(value);
+    };
+
+    const updateHistoryDatalist = () => {
+      const setOptions = (id, list) => {
+        document.getElementById(id).innerHTML = list.map(value => `<option value="${value}"></option>`).join('');
+      };
+      setOptions('history-name', state.history.names);
+      setOptions('history-maker', state.history.makers);
+      setOptions('history-model', state.history.models);
+      setOptions('history-category', state.history.categories);
+    };
+
+    const assignCategoryColor = (category) => {
+      if (!category) return '#94a3b8';
+      if (state.categoryColors[category]) return state.categoryColors[category];
+      const color = COLOR_PALETTE[Object.keys(state.categoryColors).length % COLOR_PALETTE.length];
+      state.categoryColors[category] = color;
+      return color;
+    };
+
+    const getCategoryList = () => {
+      const categories = state.items.filter(item => !item.deleted).map(item => item.category).filter(Boolean);
+      return [...new Set(categories)];
+    };
+
+    const renderCategoryFilters = () => {
+      const categories = getCategoryList();
+      const stockFilter = document.getElementById('stockCategoryFilter');
+      const historyFilter = document.getElementById('historyCategoryFilter');
+      const options = ['<option value="">全カテゴリ</option>'].concat(
+        categories.map(cat => `<option value="${cat}">${cat}</option>`)
+      );
+      stockFilter.innerHTML = options.join('');
+      historyFilter.innerHTML = options.join('');
+    };
+
+    const calculateTotalAsset = () => {
+      const total = state.items.filter(item => !item.deleted)
+        .reduce((sum, item) => sum  (item.stock * (item.price || 0)), 0);
+      document.getElementById('totalAsset').textContent = total.toLocaleString();
+    };
+
+    const getAlertClass = (item) => {
+      if (item.stock <= item.minStock) return 'alert-shortage';
+      if (item.orderRequest && item.orderRequest.status === '依頼中') return 'alert-order';
+      return '';
+    };
+
+    const renderShortageNotice = () => {
+      const shortage = state.items.filter(item => !item.deleted && item.stock <= item.minStock);
+      const container = document.getElementById('shortageNotice');
+      if (shortage.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+      container.innerHTML = `
+        <div class="card alert-shortage">
+          <div style="font-weight:700; color:var(--danger); margin-bottom:6px;">購入依頼してください</div>
+          <div>${shortage.map(item => item.name).join(' / ')}</div>
+        </div>
+      `;
+    };
+
+    const renderStockList = () => {
+      const search = document.getElementById('stockSearch').value.trim().toLowerCase();
+      const category = document.getElementById('stockCategoryFilter').value;
+      const list = state.items.filter(item => !item.deleted).filter(item => {
+        const matchesSearch = item.name.toLowerCase().includes(search);
+        const matchesCategory = !category || item.category === category;
+        return matchesSearch && matchesCategory;
+      });
+
+      const container = document.getElementById('stockList');
+      container.innerHTML = list.map(item => {
+        const categoryColor = assignCategoryColor(item.category);
+        const alertClass = getAlertClass(item);
+        const orderInfo = item.orderRequest && item.orderRequest.status === '依頼中'
+          ? `<div class="muted">発注: ${item.orderRequest.qty || '-'} / ${item.orderRequest.orderDate || '-'} / ${item.orderRequest.expectedDate || '-'}</div>`
+          : '';
+        const shortageText = item.stock <= item.minStock ? '<div class="status-text" style="color:var(--danger);">購入依頼してください</div>' : '';
+        const orderStatus = item.orderRequest
+          ? `<div class="status-text" style="color:${item.orderRequest.status === '依頼中' ? 'var(--warning)' : 'var(--success)'};">発注${item.orderRequest.status}</div>`
+          : '';
+        return `
+          <div class="card ${alertClass}">
+            <div class="row-between">
+              <div>
+                <span class="category-chip" style="background:${categoryColor};">${item.category || '未分類'}</span>
+                <div class="muted">${item.maker} / ${item.model}</div>
+                <div style="font-size:18px; font-weight:700;">${item.name}</div>
+                ${orderStatus}
+                ${orderInfo}
+                ${shortageText}
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:26px; font-weight:700;">${item.stock}</div>
+                <div class="muted">¥${(item.stock * (item.price || 0)).toLocaleString()}</div>
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px;">
+              <input id="qty-${item.id}" type="number" inputmode="numeric" class="input small" placeholder="数量">
+              <button class="btn danger" onclick="openUseModal(${item.id})">使用</button>
+              <button class="btn success" onclick="receiveItem(${item.id})">納入</button>
+              <button class="btn warning" onclick="openOrderModal(${item.id})">発注</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    const renderMasterList = () => {
+      const container = document.getElementById('masterList');
+      const list = state.items.filter(item => !item.deleted);
+      container.innerHTML = list.map(item => {
+        return `
+          <div class="card">
+            <div class="row-between">
+              <div>
+                <div style="font-weight:700;">${item.name}</div>
+                <div class="muted">コード: ${item.code} / ${item.category}</div>
+                <div class="muted">最低在庫: ${item.minStock} / 現在庫: ${item.stock}</div>
+                <div class="muted">交換周期: ${item.cycleDays || '-'}日 / 最終棚卸: ${item.lastInventoryDate || '-'}</div>
+              </div>
+              <div class="row" style="flex-direction:column;">
+                <button class="btn ghost" onclick="editItem('${item.id}')">編集</button>
+                <button class="btn ghost" onclick="deleteItem('${item.id}')" style="color:var(--danger);">削除</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    const renderHistory = () => {
+      const search = document.getElementById('historySearch').value.trim().toLowerCase();
+      const category = document.getElementById('historyCategoryFilter').value;
+      const list = state.logs
+        .filter(log => !category || log.category === category)
+        .filter(log => (log.itemName || '').toLowerCase().includes(search))
+        .slice(0, 1000);
+
+      const tbody = document.getElementById('historyList');
+      tbody.innerHTML = list.map(log => `
+        <tr>
+          <td>${log.date}</td>
+          <td>${log.itemName}</td>
+          <td>${log.itemCode}</td>
+          <td>${log.category}</td>
+          <td>${log.type}</td>
+          <td>${log.qty}</td>
+          <td>${log.afterStock}</td>
+          <td>${log.useReason || '-'}</td>
+          <td>${log.suddenReason || '-'}</td>
+          <td><button class="btn ghost" onclick="openHistoryEdit('${log.id}')">編集</button></td>
+        </tr>
+      `).join('');
+    };
+
+    const openUseModal = (itemId) => {
+      const qty = document.getElementById(`qty-${itemId}`).value;
+      if (!qty || Number(qty) <= 0) {
+        alert('数量を入力してください');
+        return;
+      }
+      state.selectedItemId = itemId;
+      openModal('useModal');
+    };
+
+    const confirmUse = () => {
+      const reason = document.getElementById('useReason').value;
+      if (!reason) {
+        alert('使用理由を選択してください');
+        return;
+      }
+      const suddenReason = document.getElementById('suddenReason').value;
+      if (reason === '突発交換' && !suddenReason) {
+        alert('突発交換理由を選択してください');
+        return;
+      }
+      const note = document.getElementById('useNote').value;
+      const qty = Number(document.getElementById(`qty-${state.selectedItemId}`).value);
+      updateStock(state.selectedItemId, -qty, '使用', reason, suddenReason, note);
+      document.getElementById(`qty-${state.selectedItemId}`).value = '';
+      closeModal('useModal');
+    };
+
+    const receiveItem = (itemId) => {
+      const qty = Number(document.getElementById(`qty-${itemId}`).value);
+      if (!qty || qty <= 0) {
+        alert('数量を入力してください');
+        return;
+      }
+      updateStock(itemId, qty, '納入', '', '', '');
+      document.getElementById(`qty-${itemId}`).value = '';
+    };
+
+    const openOrderModal = (itemId) => {
+      state.selectedItemId = itemId;
+      const item = state.items.find(i => i.id === itemId);
+      if (item && item.orderRequest) {
+        document.getElementById('orderStatus').value = item.orderRequest.status;
+        document.getElementById('orderQty').value = item.orderRequest.qty || '';
+        document.getElementById('orderDate').value = item.orderRequest.orderDate || '';
+        document.getElementById('orderDue').value = item.orderRequest.expectedDate || '';
+        document.getElementById('orderNote').value = item.orderRequest.note || '';
+      }
+      openModal('orderModal');
+    };
+
+    const saveOrderRequest = () => {
+      const item = state.items.find(i => i.id === state.selectedItemId);
+      if (!item) return;
+      item.orderRequest = {
+        status: document.getElementById('orderStatus').value,
+        qty: Number(document.getElementById('orderQty').value) || 0,
+        orderDate: document.getElementById('orderDate').value,
+        expectedDate: document.getElementById('orderDue').value,
+        note: document.getElementById('orderNote').value
+      };
+      saveAll();
+      closeModal('orderModal');
+    };
+
+    const updateStock = (itemId, delta, type, useReason, suddenReason, note) => {
+      const item = state.items.find(i => i.id === itemId);
+      if (!item) return;
+      item.stock = Math.max(0, item.stock  delta);
+      const now = new Date();
+      const log = {
+        id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        timestamp: now.getTime(),
+        date: now.toLocaleString('ja-JP'),
+        itemCode: item.code,
+        itemName: item.name,
+        category: item.category,
+        type,
+        qty: Math.abs(delta),
+        afterStock: item.stock,
+        useReason,
+        suddenReason,
+        note,
+        editedAt: ''
+      };
+      state.logs.unshift(log);
+      if (type === '使用') item.lastUseDate = now.toISOString().slice(0, 10);
+      saveAll();
+    };
+
+    const saveItem = () => {
+      const code = document.getElementById('itemCode').value.trim();
+      if (!code) return alert('商品コードは必須です');
+      const exists = state.items.find(item => item.code === code && !item.deleted);
+      if (exists) return alert('商品コードが重複しています');
+
+      const item = {
+        id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        code,
+        name: document.getElementById('itemName').value.trim(),
+        maker: document.getElementById('itemMaker').value.trim(),
+        model: document.getElementById('itemModel').value.trim(),
+        category: document.getElementById('itemCategory').value.trim(),
+        minStock: Number(document.getElementById('itemMin').value) || 0,
+        stock: Number(document.getElementById('itemStock').value) || 0,
+        baseStock: Number(document.getElementById('itemStock').value) || 0,
+        price: Number(document.getElementById('itemPrice').value) || 0,
+        leadTime: Number(document.getElementById('itemLead').value) || 0,
+        cycleDays: Number(document.getElementById('itemCycle').value) || 0,
+        notes: document.getElementById('itemNotes').value.trim(),
+        deleted: false,
+        orderRequest: null,
+        lastInventoryDate: '',
+        lastUseDate: ''
+      };
+
+      addToHistory('names', item.name);
+      addToHistory('makers', item.maker);
+      addToHistory('models', item.model);
+      addToHistory('categories', item.category);
+      assignCategoryColor(item.category);
+
+      state.items.push(item);
+      clearItemModal();
+      saveAll();
+      closeModal('itemModal');
+    };
+
+    const clearItemModal = () => {
+      ['itemCode','itemName','itemMaker','itemModel','itemCategory','itemMin','itemStock','itemPrice','itemLead','itemCycle','itemNotes']
+        .forEach(id => { document.getElementById(id).value = ''; });
+    };
+
+    const editItem = (itemId) => {
+      const item = state.items.find(i => i.id === itemId);
+      if (!item) return;
+      document.getElementById('itemCode').value = item.code;
+      document.getElementById('itemName').value = item.name;
+      document.getElementById('itemMaker').value = item.maker;
+      document.getElementById('itemModel').value = item.model;
+      document.getElementById('itemCategory').value = item.category;
+      document.getElementById('itemMin').value = item.minStock;
+      document.getElementById('itemStock').value = item.stock;
+      document.getElementById('itemPrice').value = item.price;
+      document.getElementById('itemLead').value = item.leadTime;
+      document.getElementById('itemCycle').value = item.cycleDays;
+      document.getElementById('itemNotes').value = item.notes;
+      openModal('itemModal');
+
+      const saveButton = document.querySelector('#itemModal .btn.primary');
+      saveButton.onclick = () => {
+        const newCode = document.getElementById('itemCode').value.trim();
+        if (!newCode) return alert('商品コードは必須です');
+        if (newCode !== item.code && state.items.find(other => other.code === newCode && !other.deleted)) {
+          return alert('商品コードが重複しています');
+        }
+        item.code = newCode;
+        item.name = document.getElementById('itemName').value.trim();
+        item.maker = document.getElementById('itemMaker').value.trim();
+        item.model = document.getElementById('itemModel').value.trim();
+        item.category = document.getElementById('itemCategory').value.trim();
+        item.minStock = Number(document.getElementById('itemMin').value) || 0;
+        item.stock = Number(document.getElementById('itemStock').value) || 0;
+        item.baseStock = item.stock;
+        item.price = Number(document.getElementById('itemPrice').value) || 0;
+        item.leadTime = Number(document.getElementById('itemLead').value) || 0;
+        item.cycleDays = Number(document.getElementById('itemCycle').value) || 0;
+        item.notes = document.getElementById('itemNotes').value.trim();
+
+        addToHistory('names', item.name);
+        addToHistory('makers', item.maker);
+        addToHistory('models', item.model);
+        addToHistory('categories', item.category);
+        assignCategoryColor(item.category);
+
+        clearItemModal();
+        closeModal('itemModal');
+        saveAll();
+        document.querySelector('#itemModal .btn.primary').onclick = saveItem;
+      };
+    };
+
+    const deleteItem = (itemId) => {
+      const item = state.items.find(i => i.id === itemId);
+      if (!item) return;
+      if (!confirm('削除しますか？（論理削除）')) return;
+      item.deleted = true;
+      saveAll();
+    };
+
+    const openInventory = () => {
+      renderInventoryList();
+      openModal('inventoryModal');
+    };
+
+    const renderInventoryList = () => {
+      const sortBy = document.getElementById('inventorySort').value;
+      const items = state.items.filter(item => !item.deleted);
+      items.sort((a, b) => {
+        if (sortBy === 'category') {
+          return (a.category || '').localeCompare(b.category || '') || a.name.localeCompare(b.name);
+        }
+        return a.name.localeCompare(b.name);
+      });
+      const container = document.getElementById('inventoryList');
+      container.innerHTML = items.map(item => {
+        const draftValue = state.inventoryDraft[item.id];
+        const value = draftValue !== undefined ? draftValue : item.stock;
+        return `
+          <div class="card">
+            <div class="inventory-row">
+              <div>
+                <div style="font-weight:700;">${item.name}</div>
+                <div class="muted">${item.category} / 現在庫: ${item.stock}</div>
+              </div>
+              <input class="input small" type="number" inputmode="numeric" value="${value}" onchange="updateInventoryDraft('${item.id}', this.value)">
+            </div>
+          </div>
+        `;
+      }).join('');
+    };
+
+    const updateInventoryDraft = (itemId, value) => {
+      state.inventoryDraft[itemId] = Number(value) || 0;
+      saveState();
+    };
+
+    const confirmInventory = () => {
+      const now = new Date();
+      state.items.filter(item => !item.deleted).forEach(item => {
+        const newValue = state.inventoryDraft[item.id];
+        if (newValue === undefined) return;
+        if (item.stock !== newValue) {
+          item.stock = newValue;
+          item.lastInventoryDate = now.toISOString().slice(0, 10);
+          const log = {
+            id: `log-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            timestamp: now.getTime(),
+            date: now.toLocaleString('ja-JP'),
+            itemCode: item.code,
+            itemName: item.name,
+            category: item.category,
+            type: '棚卸',
+            qty: newValue,
+            afterStock: newValue,
+            useReason: '',
+            suddenReason: '',
+            note: '棚卸確定',
+            editedAt: ''
+          };
+          state.logs.unshift(log);
+        }
+      });
+      state.inventoryDraft = {};
+      saveAll();
+      closeModal('inventoryModal');
+      alert('棚卸を確定しました');
+    };
+
+    const openHistoryEdit = (logId) => {
+      const log = state.logs.find(l => l.id === logId);
+      if (!log) return;
+      state.selectedLogId = logId;
+      document.getElementById('editType').value = log.type;
+      document.getElementById('editQty').value = log.qty;
+      document.getElementById('editAfter').value = log.afterStock;
+      document.getElementById('editReason').value = log.useReason || '';
+      document.getElementById('editSudden').value = log.suddenReason || '';
+      document.getElementById('editNote').value = log.note || '';
+      openModal('historyEditModal');
+    };
+
+    const saveHistoryEdit = () => {
+      const log = state.logs.find(l => l.id === state.selectedLogId);
+      if (!log) return;
+      log.type = document.getElementById('editType').value;
+      log.qty = Number(document.getElementById('editQty').value) || 0;
+      log.afterStock = Number(document.getElementById('editAfter').value) || 0;
+      log.useReason = document.getElementById('editReason').value;
+      log.suddenReason = document.getElementById('editSudden').value;
+      log.note = document.getElementById('editNote').value;
+      log.editedAt = new Date().toISOString();
+      recalcStocks();
+      saveAll();
+      closeModal('historyEditModal');
+    };
+
+    const recalcStocks = () => {
+      const itemsByCode = Object.fromEntries(state.items.map(item => [item.code, item]));
+      state.items.forEach(item => {
+        item.stock = item.baseStock || 0;
+        item.lastUseDate = '';
+      });
+      const logsAsc = [...state.logs].sort((a, b) => a.timestamp - b.timestamp);
+      logsAsc.forEach(log => {
+        const item = itemsByCode[log.itemCode];
+        if (!item || item.deleted) return;
+        if (log.type === '使用') {
+          item.stock = Math.max(0, item.stock - log.qty);
+          item.lastUseDate = new Date(log.timestamp).toISOString().slice(0, 10);
+          log.afterStock = item.stock;
+        } else if (log.type === '納入') {
+          item.stock = log.qty;
+          log.afterStock = item.stock;
+        } else if (log.type === '棚卸' || log.type === '修正') {
+          item.stock = log.afterStock || log.qty;
+        }
+      });
+    };
+
+    const parseCSV = (text) => {
+      const rows = [];
+      let current = '';
+      let inQuotes = false;
+      let row = [];
+      for (let i = 0; i < text.length; i) {
+        const char = text[i];
+        const next = text[i  1];
+        if (char === '"' && next === '"') {
+          current = '"';
+          i;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          row.push(current);
+          current = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+          if (current || row.length) {
+            row.push(current);
+            rows.push(row);
+            row = [];
+            current = '';
+          }
+        } else {
+          current = char;
+        }
+      }
+      if (current || row.length) {
+        row.push(current);
+        rows.push(row);
+      }
+      return rows;
+    };
+
+    const exportItemsCSV = () => {
+      const headers = ['商品コード','品名','メーカー','型式','カテゴリー','最低在庫数','現在庫数','金額','リードタイム','交換周期','備考'];
+      const rows = state.items.filter(item => !item.deleted).map(item => [
+        item.code, item.name, item.maker, item.model, item.category, item.minStock, item.stock, item.price, item.leadTime, item.cycleDays, item.notes
+      ]);
+      downloadCSV('items.csv', [headers, ...rows]);
+    };
+
+    const exportHistoryCSV = () => {
+      const headers = ['日時','商品コード','商品名','カテゴリー','操作種別','数量','操作後在庫数','使用理由','突発交換理由'];
+      const rows = state.logs.map(log => [
+        log.date, log.itemCode, log.itemName, log.category, log.type, log.qty, log.afterStock, log.useReason, log.suddenReason
+      ]);
+      downloadCSV('history.csv', [headers, ...rows]);
+    };
+
+    const downloadCSV = (filename, rows) => {
+      const csv = rows.map(row => row.map(value => {
+        const str = value === undefined ? '' : String(value);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      }).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    };
+
+    const importItemsCSV = async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const text = await file.text();
+      const rows = parseCSV(text);
+      if (rows.length <= 1) return;
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+      dataRows.forEach(row => {
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = row[index] || '';
+        });
+        if (!record['商品コード']) return;
+        const existing = state.items.find(item => item.code === record['商品コード']);
+        const payload = {
+          code: record['商品コード'],
+          name: record['品名'] || '',
+          maker: record['メーカー'] || '',
+          model: record['型式'] || '',
+          category: record['カテゴリー'] || '',
+          minStock: Number(record['最低在庫数']) || 0,
+          stock: Number(record['現在庫数']) || 0,
+          price: Number(record['金額']) || 0,
+          leadTime: Number(record['リードタイム']) || 0,
+          cycleDays: Number(record['交換周期']) || 0,
+          notes: record['備考'] || ''
+        };
+        if (existing) {
+          Object.assign(existing, payload);
+          existing.baseStock = existing.stock;
+          existing.deleted = false;
+        } else {
+          state.items.push({
+            id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            baseStock: payload.stock,
+            orderRequest: null,
+            lastInventoryDate: '',
+            lastUseDate: '',
+            deleted: false,
+            ...payload
+          });
+        }
+        addToHistory('names', payload.name);
+        addToHistory('makers', payload.maker);
+        addToHistory('models', payload.model);
+        addToHistory('categories', payload.category);
+        assignCategoryColor(payload.category);
+      });
+      saveAll();
+      event.target.value = '';
+      alert('インポートが完了しました');
+    };
+
+    const renderCalendar = () => {
+      const month = state.calendarMonth;
+      const year = month.getFullYear();
+      const monthIndex = month.getMonth();
+      document.getElementById('calendarTitle').textContent = `${year}年${monthIndex  1}月`;
+
+      const firstDay = new Date(year, monthIndex, 1);
+      const lastDay = new Date(year, monthIndex  1, 0);
+      const startWeek = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+
+      const scheduleMap = buildExchangeSchedule();
+      const calendarGrid = document.getElementById('calendarGrid');
+      calendarGrid.innerHTML = '';
+
+      const headers = ['日','月','火','水','木','金','土'];
+      headers.forEach(day => {
+        const div = document.createElement('div');
+        div.className = 'day-header';
+        div.textContent = day;
+        calendarGrid.appendChild(div);
+      });
+
+      for (let i = 0; i < startWeek; i) {
+        const empty = document.createElement('div');
+        calendarGrid.appendChild(empty);
+      }
+
+      for (let day = 1; day <= totalDays; day) {
+        const dateKey = formatDateKey(year, monthIndex, day);
+        const hasEvent = scheduleMap[dateKey];
+        const cell = document.createElement('button');
+        cell.className = `day${hasEvent ? ' has-event' : ''}`;
+        cell.textContent = day;
+        cell.onclick = () => selectDate(dateKey);
+        cell.dataset.date = dateKey;
+        calendarGrid.appendChild(cell);
+      }
+
+      const today = new Date();
+      const todayKey = today.toISOString().slice(0, 10);
+      const withinMonth = today.getFullYear() === year && today.getMonth() === monthIndex;
+      selectDate(withinMonth ? todayKey : formatDateKey(year, monthIndex, 1));
+    };
+
+    const changeMonth = (delta) => {
+      state.calendarMonth = new Date(state.calendarMonth.getFullYear(), state.calendarMonth.getMonth()  delta, 1);
+      renderCalendar();
+    };
+
+    const formatDateKey = (year, monthIndex, day) => {
+      const month = String(monthIndex  1).padStart(2, '0');
+      const date = String(day).padStart(2, '0');
+      return `${year}-${month}-${date}`;
+    };
+
+    const selectDate = (dateKey) => {
+      document.querySelectorAll('.calendar .day').forEach(cell => {
+        cell.classList.toggle('selected', cell.dataset.date === dateKey);
+      });
+      const scheduleMap = buildExchangeSchedule();
+      const list = scheduleMap[dateKey] || [];
+      const container = document.getElementById('exchangeList');
+      if (list.length === 0) {
+        container.textContent = '該当する交換予定はありません。';
+        return;
+      }
+      container.innerHTML = list.map(item => `<div class="list-item"><strong>${item.name}</strong><div class="muted">カテゴリ: ${item.category} / 次回交換日: ${item.nextDate}</div></div>`).join('');
+    };
+
+    const buildExchangeSchedule = () => {
+      const scheduleMap = {};
+      const items = state.items.filter(item => !item.deleted && item.cycleDays > 0);
+      items.forEach(item => {
+        const lastUse = getLastUseDate(item.code);
+        if (!lastUse) return;
+        const nextDate = addBusinessDays(new Date(lastUse), item.cycleDays);
+        const dateKey = nextDate.toISOString().slice(0, 10);
+        if (!scheduleMap[dateKey]) scheduleMap[dateKey] = [];
+        scheduleMap[dateKey].push({
+          name: item.name,
+          category: item.category,
+          nextDate: dateKey
+        });
+      });
+      return scheduleMap;
+    };
+
+    const getLastUseDate = (code) => {
+      const log = state.logs.find(l => l.itemCode === code && l.type === '使用');
+      return log ? new Date(log.timestamp).toISOString().slice(0, 10) : null;
+    };
+
+    const addBusinessDays = (date, days) => {
+      const result = new Date(date);
+      let added = 0;
+      while (added < days) {
+        result.setDate(result.getDate()  1);
+        const day = result.getDay();
+        if (day !== 0 && day !== 6) added;
+      }
+      return result;
+    };
+
+    const saveAll = () => {
+      state.logs = state.logs.slice(0, 1000);
+      saveState();
+      updateHistoryDatalist();
+      renderCategoryFilters();
+      calculateTotalAsset();
+      renderShortageNotice();
+      renderStockList();
+      renderHistory();
+      renderMasterList();
+      renderCalendar();
+    };
+
+    const init = () => {
+      loadState();
+      updateHistoryDatalist();
+      renderCategoryFilters();
+      calculateTotalAsset();
+      renderShortageNotice();
+      renderStockList();
+      renderHistory();
+      renderMasterList();
+      renderCalendar();
+    };
+
+    init();
+  </script>
+</body>
+</html>
+
